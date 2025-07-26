@@ -1,0 +1,32 @@
+{
+  "enabled_plugins": [
+    "demo_plugin"
+  ],
+  "plugin_settings": {
+    "screenshot_tool": {
+      "save_directory": "screenshots",
+      "default_format": "png",
+      "auto_copy_to_clipboard": true,
+      "show_notification": true
+    },
+    "work_log": {
+      "log_directory": "work_logs",
+      "auto_save_interval": 300,
+      "date_format": "yyyy-MM-dd",
+      "enable_markdown": true
+    },
+    "demo_plugin": {
+      "click_count": 12
+    }
+  },
+  "ui_settings": {
+    "theme": "light",
+    "font_size": 8,
+    "window_opacity": 0.9,
+    "language": "en_US"
+  },
+  "startup_settings": {
+    "auto_start": false,
+    "minimize_to_tray": true
+  }
+}
