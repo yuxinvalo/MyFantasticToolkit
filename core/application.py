@@ -51,7 +51,7 @@ class LittleWorkerApp(QMainWindow):
         # 初始化系统托盘
         self._init_system_tray()
         
-        logger.info("🚀 Application initialized successfully")
+        logger.debug("[STARTUP] 🚀 Application initialized successfully")
     
     def load_language_settings(self):
         """加载语言设置"""
@@ -67,12 +67,12 @@ class LittleWorkerApp(QMainWindow):
                     config = json.load(f)
                     language = config.get("ui_settings", {}).get("language", "en_US")
                     self.i18n_manager.set_language(language)
-                    logger.info(f"🌐 Language loaded: {language}")
+                    logger.info(f"[SETTINGS] 🌐 Language loaded: {language}")
             else:
-                logger.warning("⚠️ Config file not found, using default language")
+                logger.warning("[SETTINGS] ⚠️ Config file not found, using default language")
                 
         except Exception as e:
-            logger.error(f"❌ Failed to load language settings: {e}")
+            logger.error(f"[SETTINGS] ❌ Failed to load language settings: {e} - {traceback.format_exc()}")
     
     def _load_ui_settings(self):
         """加载并应用UI设置"""
@@ -84,7 +84,7 @@ class LittleWorkerApp(QMainWindow):
             )
             
             if not os.path.exists(config_path):
-                logger.warning("⚠️ Config file not found, using default UI settings")
+                logger.warning("[SETTINGS] ⚠️ Config file not found, using default UI settings")
                 return
             
             with open(config_path, 'r', encoding='utf-8') as f:
@@ -94,7 +94,7 @@ class LittleWorkerApp(QMainWindow):
                 # 应用窗口透明度设置
                 opacity = ui_settings.get("window_opacity", 1.0)
                 self.setWindowOpacity(opacity)
-                logger.info(f"🔍 Window opacity applied: {int(opacity * 100)}%")
+                logger.debug(f"[SETTINGS] 🔍 Window opacity applied: {int(opacity * 100)}%")
                 
                 # 应用字体大小设置
                 font_size = ui_settings.get("font_size", 11)
@@ -103,12 +103,12 @@ class LittleWorkerApp(QMainWindow):
                 font = QApplication.font()
                 font.setPointSize(font_size)
                 QApplication.setFont(font)
-                logger.info(f"🔤 Font size applied: {font_size}")
+                logger.debug(f"[SETTINGS] 🔤 Font size applied: {font_size}")
                 
-                logger.info("✅ UI settings loaded and applied")
+                logger.debug("[SETTINGS] ✅ UI settings loaded and applied")
                 
         except Exception as e:
-            logger.error(f"❌ Failed to load UI settings: {e}")
+            logger.error(f"[SETTINGS] ❌ Failed to load UI settings: {e} - {traceback.format_exc()}")   
     
     def _init_ui(self):
         """初始化用户界面"""
@@ -132,13 +132,10 @@ class LittleWorkerApp(QMainWindow):
         # 创建菜单栏
         self._create_menu_bar()
         
-        # # 创建工具栏
-        # self._create_tool_bar()
-        
         # 创建状态栏
         self._create_status_bar()
         
-        logger.info("✅ Main window initialized")
+        logger.info("[STARTUP] ✅ Main window initialized")
     
     def _create_menu_bar(self):
         """创建菜单栏"""
@@ -186,27 +183,6 @@ class LittleWorkerApp(QMainWindow):
         about_action.triggered.connect(self._show_about)
         help_menu.addAction(about_action)
     
-    @deprecated("工具栏已废弃，将在未来版本中移除")
-    def _create_tool_bar(self):
-        """创建工具栏"""
-        toolbar = QToolBar(tr("toolbar.main"), self)
-        toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-        self.addToolBar(toolbar)
-        
-        # 插件管理按钮
-        plugin_action = QAction(tr("menu.plugin_manager"), self)
-        plugin_action.setToolTip(tr("menu.plugin_manager.tooltip"))
-        plugin_action.triggered.connect(self._show_plugin_manager)
-        toolbar.addAction(plugin_action)
-        
-        toolbar.addSeparator()
-        
-        # 设置按钮
-        settings_action = QAction(tr("menu.settings"), self)
-        settings_action.setToolTip(tr("menu.settings.tooltip"))
-        settings_action.triggered.connect(self._show_settings)
-        toolbar.addAction(settings_action)
-    
     def _create_status_bar(self):
         """创建状态栏"""
         status_bar = QStatusBar()
@@ -214,8 +190,6 @@ class LittleWorkerApp(QMainWindow):
         
         # 显示就绪状态
         status_bar.showMessage(tr("status.ready"))
-        
-        # logger.info("状态栏创建完成")
     
     def _create_language_menu(self, language_menu):
         """创建语言菜单"""
@@ -237,7 +211,7 @@ class LittleWorkerApp(QMainWindow):
         self._create_menu_bar()
         # 保存语言设置
         self._save_language_settings(language_code)
-        logger.info(f"🌐 Language changed to: {language_code}")
+        logger.info(f"[SETTINGS] 🌐 Language changed to: {language_code}")
     
     def _save_language_settings(self, language_code):
         """保存语言设置"""
@@ -264,10 +238,10 @@ class LittleWorkerApp(QMainWindow):
             with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump(config, f, ensure_ascii=False, indent=2)
                 
-            logger.info(f"💾 Language settings saved: {language_code}")
+            logger.info(f"[SETTINGS] 💾 Language settings saved: {language_code}")
             
         except Exception as e:
-            logger.error(f"❌ Failed to save language settings: {e}")
+            logger.error(f"[SETTINGS] ❌ Failed to save language settings: {e} - {traceback.format_exc()}")
     
     def _init_plugin_manager(self):
         """初始化插件管理器"""
@@ -281,15 +255,13 @@ class LittleWorkerApp(QMainWindow):
             # 加载插件
             self.plugin_manager.load_plugins()
             
-            # logger.info("插件管理器初始化完成")
-            
         except Exception as e:
-            logger.error(f"❌ Plugin manager initialization failed: {e}")
+            logger.error(f"[PLUGIN] ❌ Plugin manager initialization failed: {e} - {traceback.format_exc()}")
     
     def _init_system_tray(self):
         """初始化系统托盘"""
         if not QSystemTrayIcon.isSystemTrayAvailable():
-            logger.warning("⚠️ System tray unavailable")
+            logger.warning("[SYSTEM] ⚠️ System tray unavailable")
             return
         
         try:
@@ -322,22 +294,22 @@ class LittleWorkerApp(QMainWindow):
             # 连接托盘图标双击事件
             self.system_tray.activated.connect(self._on_tray_activated)
             
-            logger.info("📱 System tray initialized")
+            logger.info("[SYSTEM] 📱 System tray initialized")
             
         except Exception as e:
-            logger.error(f"❌ System tray initialization failed: {e}")
+            logger.error(f"[SYSTEM] ❌ System tray initialization failed: {e} - {traceback.format_exc()}")
     
     def _on_plugin_loaded(self, plugin_name):
         """插件加载完成回调"""
         self.statusBar().showMessage(tr("status.plugin_loaded").format(name=plugin_name), 3000)
         self.plugin_loaded.emit(plugin_name)
-        logger.info(f"🔌 Plugin loaded: {plugin_name}")
+        logger.debug(f"[PLUGIN] 🔌 Plugin loaded: {plugin_name}")
     
     def _on_plugin_unloaded(self, plugin_name):
         """插件卸载完成回调"""
         self.statusBar().showMessage(tr("status.plugin_unloaded").format(name=plugin_name), 3000)
         self.plugin_unloaded.emit(plugin_name)
-        logger.info(f"🔌 Plugin unloaded: {plugin_name}")
+        logger.debug(f"[PLUGIN] 🔌 Plugin unloaded: {plugin_name}")
     
     def _on_tray_activated(self, reason):
         """系统托盘激活事件"""
@@ -353,7 +325,7 @@ class LittleWorkerApp(QMainWindow):
         """显示插件管理器"""
         # TODO: 实现插件管理器对话框
         self.statusBar().showMessage(tr("status.plugin_manager_todo"), 3000)
-        logger.debug("🔧 Show plugin manager")
+        logger.debug("[ACTION] 🔧 Show plugin manager")
     
     def _show_settings(self):
         """显示设置对话框"""
@@ -392,7 +364,7 @@ class LittleWorkerApp(QMainWindow):
             # 如果设置对话框不存在，显示简单消息
             QMessageBox.information(self, "设置", "设置功能正在开发中...")
         
-        logger.debug("⚙️ Show settings dialog")
+        logger.debug("[ACTION] ⚙️ Show settings dialog")
     
     def _on_settings_changed(self):
         """设置变更时的处理"""
@@ -402,13 +374,13 @@ class LittleWorkerApp(QMainWindow):
         # 重新创建菜单栏以更新语言
         self.menuBar().clear()
         self._create_menu_bar()
-        logger.debug("⚙️ Settings change handled")
+        logger.debug("[ACTION] ⚙️ Settings change handled")
     
     def _show_welcome(self):
         """显示欢迎页"""
         if self.main_window:
             self.main_window.show_welcome_tab()
-        logger.debug("📋 Show welcome page")
+        logger.debug("[ACTION] 📋 Show welcome page")
     
     def _show_about(self):
         """显示关于对话框"""
@@ -421,7 +393,7 @@ class LittleWorkerApp(QMainWindow):
     def _quit_application(self):
         """退出应用程序"""
         from PySide6.QtWidgets import QApplication
-        logger.info("👋 User requested app exit")
+        logger.info("[EXIT] 👋 User requested app exit")
         if self.system_tray:
             self.system_tray.hide()
         QApplication.quit()
@@ -446,7 +418,7 @@ class LittleWorkerApp(QMainWindow):
             self._first_hide = True
         else:
             # 没有系统托盘，直接退出
-            logger.info("👋 Application exiting")
+            logger.info("[EXIT] 👋 Application exiting")
             event.accept()
     
     def get_plugin_manager(self):

@@ -3,13 +3,18 @@
 HSBC Little Worker - 插件基类
 """
 
+import os
+import sys
+import json
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Optional, Dict, Any
 
 from PySide6.QtWidgets import QWidget
 from PySide6.QtCore import QObject, Signal
 
 from utils.logger import logger
+# 移除不存在的导入
 
 
 class PluginMeta(type(QObject), type(ABC)):
@@ -40,6 +45,17 @@ class PluginBase(QObject, ABC, metaclass=PluginMeta):
         self._widget = None  # 插件界面组件
         self._initialized = False  # 初始化状态
         self._enabled = True  # 启用状态
+        
+        # 插件本地化支持
+        self._plugin_dir = None
+        self._config = {}
+        self._translations = {}
+        self._current_language = "zh_CN"
+        
+        # 初始化插件目录和配置
+        self._init_plugin_paths()
+        self._load_plugin_config()
+        self._load_plugin_translations()
         
 
     
@@ -190,6 +206,11 @@ class PluginBase(QObject, ABC, metaclass=PluginMeta):
         Returns:
             设置值
         """
+        # 优先使用本地配置
+        if self._config and 'settings' in self._config:
+            return self._config['settings'].get(key, default)
+        
+        # 回退到全局配置
         plugin_manager = self.get_plugin_manager()
         if plugin_manager:
             return plugin_manager.get_plugin_setting(self.get_name(), key, default)
@@ -202,9 +223,119 @@ class PluginBase(QObject, ABC, metaclass=PluginMeta):
             key: 设置键名
             value: 设置值
         """
-        plugin_manager = self.get_plugin_manager()
-        if plugin_manager:
-            plugin_manager.set_plugin_setting(self.get_name(), key, value)
+        # 优先使用本地配置
+        if self._config:
+            if 'settings' not in self._config:
+                self._config['settings'] = {}
+            self._config['settings'][key] = value
+            self._save_plugin_config()
+        else:
+            # 回退到全局配置
+            plugin_manager = self.get_plugin_manager()
+            if plugin_manager:
+                plugin_manager.set_plugin_setting(self.get_name(), key, value)
+    
+    def _init_plugin_paths(self):
+        """初始化插件路径"""
+        try:
+            # 通过模块路径确定插件目录
+            module_file = sys.modules[self.__class__.__module__].__file__
+            if module_file:
+                self._plugin_dir = Path(module_file).parent
+        except Exception as e:
+            logger.error(f"❌ [Plugin] Failed to init plugin paths: {e}")
+    
+    def _load_plugin_config(self):
+        """加载插件本地配置"""
+        if not self._plugin_dir:
+            return
+        
+        config_file = self._plugin_dir / "config.json"
+        if config_file.exists():
+            try:
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    self._config = json.load(f)
+                logger.debug(f"📋 [Plugin] Config loaded for {self.get_name()}")
+            except Exception as e:
+                logger.error(f"❌ [Plugin] Failed to load config for {self.get_name()}: {e}")
+                self._config = {}
+    
+    def _save_plugin_config(self):
+        """保存插件本地配置"""
+        if not self._plugin_dir or not self._config:
+            return
+        
+        config_file = self._plugin_dir / "config.json"
+        try:
+            with open(config_file, 'w', encoding='utf-8') as f:
+                json.dump(self._config, f, indent=2, ensure_ascii=False)
+            logger.debug(f"💾 [Plugin] Config saved for {self.get_name()}")
+        except Exception as e:
+            logger.error(f"❌ [Plugin] Failed to save config for {self.get_name()}: {e}")
+    
+    def _load_plugin_translations(self):
+        """加载插件翻译文件"""
+        if not self._plugin_dir:
+            return
+        
+        translations_dir = self._plugin_dir / "translations"
+        if not translations_dir.exists():
+            return
+        
+        # 加载所有语言的翻译文件
+        for lang_file in translations_dir.glob("*.json"):
+            lang_code = lang_file.stem
+            try:
+                with open(lang_file, 'r', encoding='utf-8') as f:
+                    self._translations[lang_code] = json.load(f)
+                logger.debug(f"🌍 [Plugin] Translation loaded for {self.get_name()}: {lang_code}")
+            except Exception as e:
+                logger.error(f"❌ [Plugin] Failed to load translation {lang_file}: {e}")
+    
+    def tr(self, key: str, **kwargs) -> str:
+        """
+        获取插件本地化文本
+        
+        Args:
+            key: 翻译键
+            **kwargs: 格式化参数
+            
+        Returns:
+            str: 翻译后的文本
+        """
+        # 首先尝试从全局国际化管理器获取插件翻译
+        from core.i18n import i18n_manager
+        plugin_name = self.__class__.__module__.split('.')[-1]  # 获取插件名称
+        text = i18n_manager.get_plugin_translation(plugin_name, key)
+        
+        if text != key:  # 如果找到了翻译
+            if kwargs:
+                try:
+                    return text.format(**kwargs)
+                except (KeyError, ValueError):
+                    return text
+            return text
+        
+        # 回退到本地翻译
+        if self._translations and self._current_language in self._translations:
+            text = self._translations[self._current_language].get(key, key)
+            if kwargs:
+                try:
+                    return text.format(**kwargs)
+                except (KeyError, ValueError):
+                    return text
+            return text
+        return key
+    
+    def set_language(self, language_code: str):
+        """设置插件语言
+        
+        Args:
+            language_code: 语言代码
+        """
+        if language_code in self._translations or language_code in ["zh_CN", "en_US"]:
+            self._current_language = language_code
+            logger.debug(f"🌍 [Plugin] Language set to {language_code} for {self.get_name()}")
     
     def show_status_message(self, message: str, timeout: int = 3000):
         """在状态栏显示消息
@@ -290,7 +421,7 @@ class SimplePluginBase(PluginBase):
         """
         from PySide6.QtWidgets import QLabel
         
-        widget = QLabel(f"这是 {self.get_display_name()} 插件的默认界面")
+        widget = QLabel(f"This is the default interface of the {self.get_display_name()} plugin")
         widget.setStyleSheet(
             "QLabel {"
             "    padding: 50px;"

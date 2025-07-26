@@ -35,8 +35,6 @@ class MainWindow(QWidget):
         
         # 连接语言变更信号
         self.i18n_manager.language_changed.connect(self.on_language_changed)
-        
-        # logger.info("MainWindow Init ...")
     
     def _init_ui(self):
         """初始化用户界面"""
@@ -58,7 +56,6 @@ class MainWindow(QWidget):
     
     def _create_welcome_widget(self):
         """创建欢迎区域"""
-        # logger.info("创建欢迎区域组件")
         welcome_frame = QFrame()
         welcome_frame.setFrameStyle(QFrame.Box)
         welcome_frame.setMaximumHeight(120)
@@ -271,7 +268,7 @@ class MainWindow(QWidget):
     
     def add_plugin_button(self, plugin_name, plugin_display_name, plugin_description=""):
         """添加插件按钮"""
-        logger.info(f"🔌 Adding plugin button: {plugin_display_name}")
+        logger.debug(f"[PLUGIN] 🔌 Adding plugin button: {plugin_display_name}")
         
         # 移除默认提示（如果存在）
         if hasattr(self, 'no_plugins_label') and self.no_plugins_label:
@@ -300,8 +297,6 @@ class MainWindow(QWidget):
             self.plugin_buttons_layout.count() - 1, 
             button
         )
-        
-        logger.info(f"✅ Plugin button added: {plugin_display_name}")
     
     def _open_plugin(self, plugin_name, plugin_display_name):
         """打开插件"""
@@ -314,12 +309,12 @@ class MainWindow(QWidget):
         # 发送请求插件界面信号
         self.plugin_widget_requested.emit(plugin_name)
         
-        logger.debug(f"🚀 Opening plugin: {plugin_name}")
+        logger.debug(f"[PLUGIN] 🚀 Opening plugin: {plugin_name}")
     
     def add_plugin_widget(self, plugin_name, plugin_display_name, widget):
         """添加插件界面"""
         if widget is None:
-            logger.warning(f"⚠️ Plugin {plugin_name} returned empty widget")
+            logger.warning(f"[PLUGIN] ⚠️ Plugin {plugin_name} returned empty widget")
             return
         
         # 存储插件界面
@@ -329,7 +324,7 @@ class MainWindow(QWidget):
         index = self.tab_widget.addTab(widget, plugin_display_name)
         self.tab_widget.setCurrentIndex(index)
         
-        logger.debug(f"📋 Plugin widget added: {plugin_display_name}")
+        logger.debug(f"[PLUGIN] 📋 Plugin widget added: {plugin_display_name}")
     
     def _close_plugin_tab(self, index):
         """关闭插件标签页"""
@@ -349,12 +344,12 @@ class MainWindow(QWidget):
         if plugin_name:
             del self.plugin_widgets[plugin_name]
         
-        logger.debug(f"❌ Plugin tab closed: {tab_text}")
+        logger.debug(f"[PLUGIN] ❌ Plugin tab closed: {tab_text}")
     
     def remove_plugin_button(self, plugin_name):
         """移除插件按钮"""
         # TODO: 实现移除插件按钮的逻辑
-        logger.debug(f"🗑️ Plugin button removed: {plugin_name}")
+        logger.debug(f"[PLUGIN] 🗑️ Plugin button removed: {plugin_name}")
     
     def on_language_changed(self):
         """语言变更时更新界面文本"""
@@ -382,7 +377,7 @@ class MainWindow(QWidget):
         if hasattr(self, 'welcome_desc') and self.welcome_desc is not None:
             self.welcome_desc.setText(tr("welcome.description"))
         
-        logger.debug("🌐 Main window text updated")
+        logger.debug("[SETTINGS] 🌐 Main window text updated")
     
     def on_settings_changed(self):
         """设置变更时的处理"""
@@ -392,7 +387,7 @@ class MainWindow(QWidget):
             if hasattr(parent, '_create_menu_bar'):
                 parent.menuBar().clear()
                 parent._create_menu_bar()
-        logger.debug("⚙️ Settings change handled")
+        logger.debug("[SETTINGS] ⚙️ Settings change handled")
     
     def get_plugin_widget(self, plugin_name):
         """获取插件界面"""
@@ -405,14 +400,14 @@ class MainWindow(QWidget):
         # 通过父窗口调用插件管理器
         if self.parent() and hasattr(self.parent(), '_show_plugin_manager'):
             self.parent()._show_plugin_manager()
-        logger.debug("🔧 Show plugin manager")
+        logger.debug("[PLUGIN] 🔧 Show plugin manager")
     
     def show_settings(self):
         """显示设置对话框"""
         # 通过父窗口调用设置对话框
         if self.parent() and hasattr(self.parent(), '_show_settings'):
             self.parent()._show_settings()
-        logger.debug("⚙️ Show settings dialog")
+        logger.debug("[SETTINGS] ⚙️ Show settings dialog")
     
     def show_welcome_tab(self):
         """显示欢迎页标签"""
@@ -422,11 +417,11 @@ class MainWindow(QWidget):
             for i in range(self.tab_widget.count()):
                 if i == self.welcome_tab_index:
                     self.tab_widget.setCurrentIndex(i)
-                    logger.debug("📋 Switched to existing welcome tab")
+                    logger.debug("[UI] 📋 Switched to existing welcome tab")
                     return
         
         # 如果欢迎页不存在，重新创建
         welcome_tab = self._create_welcome_tab()
         self.welcome_tab_index = self.tab_widget.addTab(welcome_tab, tr("tab.welcome"))
         self.tab_widget.setCurrentIndex(self.welcome_tab_index)
-        logger.debug("📋 Created and showed new welcome tab")
+        logger.debug("[UI] 📋 Created and showed new welcome tab")

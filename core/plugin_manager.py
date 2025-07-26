@@ -15,6 +15,7 @@ from PySide6.QtCore import QObject, Signal
 
 from .plugin_base import PluginBase
 from utils.logger import logger
+from core.i18n import tr, i18n_manager
 
 
 class PluginManager(QObject):
@@ -109,6 +110,16 @@ class PluginManager(QObject):
         try:
             plugin_name = plugin_dir.name
             
+            # 首先尝试从本地配置文件读取插件信息
+            config_file = plugin_dir / "config.json"
+            plugin_config = {}
+            if config_file.exists():
+                try:
+                    with open(config_file, 'r', encoding='utf-8') as f:
+                        plugin_config = json.load(f)
+                except Exception as e:
+                    logger.warning(f"⚠️ Failed to load config for {plugin_name}: {e}")
+            
             # 尝试导入插件模块获取元信息
             spec = importlib.util.spec_from_file_location(
                 f"plugins.{plugin_name}",
@@ -127,16 +138,19 @@ class PluginManager(QObject):
                 logger.warning(f"⚠️ Plugin {plugin_name} has no valid Plugin class")
                 return None
             
-            # 获取插件元信息
+            # 获取插件元信息，优先使用本地配置
+            plugin_info_config = plugin_config.get('plugin_info', {})
+            
             plugin_info = {
                 'name': plugin_name,
-                'display_name': getattr(plugin_class, 'DISPLAY_NAME', plugin_name),
-                'description': getattr(plugin_class, 'DESCRIPTION', ''),
-                'version': getattr(plugin_class, 'VERSION', '1.0.0'),
-                'author': getattr(plugin_class, 'AUTHOR', ''),
-                'enabled': plugin_name in self.plugin_configs.get('enabled_plugins', []),
+                'display_name': plugin_info_config.get('display_name', getattr(plugin_class, 'DISPLAY_NAME', plugin_name)),
+                'description': plugin_info_config.get('description', getattr(plugin_class, 'DESCRIPTION', '')),
+                'version': plugin_info_config.get('version', getattr(plugin_class, 'VERSION', '1.0.0')),
+                'author': plugin_info_config.get('author', getattr(plugin_class, 'AUTHOR', '')),
+                'enabled': plugin_info_config.get('enabled', plugin_name in self.plugin_configs.get('enabled_plugins', [])),
                 'path': str(plugin_dir),
-                'class': plugin_class
+                'class': plugin_class,
+                'has_local_config': config_file.exists()
             }
             
             return plugin_info
@@ -200,6 +214,13 @@ class PluginManager(QObject):
             if not isinstance(plugin_instance, PluginBase):
                 logger.error(f"❌ Plugin {plugin_name} is not a subclass of PluginBase")
                 return False
+            
+            # 注册插件翻译
+            plugin_dir = os.path.join(self.plugins_dir, plugin_name)
+            translations_dir = os.path.join(plugin_dir, 'translations')
+            if os.path.exists(translations_dir):
+                i18n_manager.register_plugin_translations(plugin_name, translations_dir)
+                logger.info(f"[插件管理器] 🌐 插件 {plugin_name} 翻译文件已注册")
             
             # 初始化插件
             plugin_instance.initialize()

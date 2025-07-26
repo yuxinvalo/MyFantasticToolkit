@@ -10,11 +10,11 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 
-from core.plugin_base import SimplePluginBase
-from core.i18n import tr, get_i18n_manager
+from core.plugin_base import PluginBase
+from core.i18n import get_i18n_manager
 
 
-class Plugin(SimplePluginBase):
+class Plugin(PluginBase):
     """Demo Plugin class"""
     
     # 插件元信息
@@ -30,6 +30,7 @@ class Plugin(SimplePluginBase):
         
         # 连接语言变更信号
         self.i18n_manager.language_changed.connect(self.on_language_changed)
+        self.i18n_manager.language_changed.connect(lambda lang: self.set_language(lang))
     
     def initialize(self) -> bool:
         """初始化插件"""
@@ -56,7 +57,7 @@ class Plugin(SimplePluginBase):
         layout.setSpacing(15)
         
         # 标题
-        self.title_label = QLabel(tr("plugin.demo.name"))
+        self.title_label = QLabel(self.tr("plugin.demo.name"))
         title_font = QFont()
         title_font.setPointSize(16)
         title_font.setBold(True)
@@ -65,7 +66,7 @@ class Plugin(SimplePluginBase):
         layout.addWidget(self.title_label)
         
         # 描述
-        self.desc_label = QLabel(tr("plugin.demo.description_detail"))
+        self.desc_label = QLabel(self.tr("plugin.demo.description_detail"))
         self.desc_label.setWordWrap(True)
         self.desc_label.setStyleSheet(
             "QLabel {"
@@ -79,19 +80,19 @@ class Plugin(SimplePluginBase):
         layout.addWidget(self.desc_label)
         
         # 功能区域
-        self.function_group = QGroupBox(tr("plugin.demo.function_demo"))
+        self.function_group = QGroupBox(self.tr("plugin.demo.function_demo"))
         function_layout = QVBoxLayout(self.function_group)
         
         # 点击计数器
         counter_layout = QHBoxLayout()
         
-        self.counter_label = QLabel(tr("plugin.demo.click_count").format(count=self.click_count))
+        self.counter_label = QLabel(self.tr("plugin.demo.click_count").format(count=self.click_count))
         self.counter_label.setStyleSheet("font-weight: bold; font-size: 14px;")
         counter_layout.addWidget(self.counter_label)
         
         counter_layout.addStretch()
         
-        self.click_button = QPushButton(tr("plugin.demo.click_button"))
+        self.click_button = QPushButton(self.tr("plugin.demo.click_button"))
         self.click_button.clicked.connect(self._on_click_button)
         self.click_button.setStyleSheet(
             "QPushButton {"
@@ -114,7 +115,7 @@ class Plugin(SimplePluginBase):
         function_layout.addLayout(counter_layout)
         
         # 重置按钮
-        self.reset_button = QPushButton(tr("plugin.demo.reset_button"))
+        self.reset_button = QPushButton(self.tr("plugin.demo.reset_button"))
         self.reset_button.clicked.connect(self._on_reset_button)
         self.reset_button.setStyleSheet(
             "QPushButton {"
@@ -133,7 +134,7 @@ class Plugin(SimplePluginBase):
         layout.addWidget(self.function_group)
         
         # 日志显示区域
-        self.log_group = QGroupBox(tr("plugin.demo.log_title"))
+        self.log_group = QGroupBox(self.tr("plugin.demo.log_title"))
         log_layout = QVBoxLayout(self.log_group)
         
         self.log_text = QTextEdit()
@@ -156,7 +157,7 @@ class Plugin(SimplePluginBase):
         log_layout.addWidget(self.log_text)
         
         # 清空日志按钮
-        self.clear_log_button = QPushButton(tr("plugin.demo.clear_log"))
+        self.clear_log_button = QPushButton(self.tr("plugin.demo.clear_log"))
         self.clear_log_button.clicked.connect(self._on_clear_log)
         self.clear_log_button.setStyleSheet(
             "QPushButton {"
@@ -187,13 +188,13 @@ class Plugin(SimplePluginBase):
         self.click_count += 1
         
         # 更新界面
-        self.counter_label.setText(tr("plugin.demo.click_count").format(count=self.click_count))
+        self.counter_label.setText(self.tr("plugin.demo.click_count").format(count=self.click_count))
         
         # 保存设置
         self.set_setting('click_count', self.click_count)
         
         # 添加日志
-        message = tr("plugin.demo.clicked_message").format(count=self.click_count)
+        message = self.tr("plugin.demo.clicked_message").format(count=self.click_count)
         self.log_text.append(f"[INFO] {message}")
         
         # 显示状态消息
@@ -208,17 +209,17 @@ class Plugin(SimplePluginBase):
         self.click_count = 0
         
         # 更新界面
-        self.counter_label.setText(tr("plugin.demo.click_count").format(count=self.click_count))
+        self.counter_label.setText(self.tr("plugin.demo.click_count").format(count=self.click_count))
         
         # 保存设置
         self.set_setting('click_count', self.click_count)
         
         # 添加日志
-        message = tr("plugin.demo.reset_message").format(old_count=old_count)
+        message = self.tr("plugin.demo.reset_message").format(old_count=old_count)
         self.log_text.append(f"[INFO] {message}")
         
         # 显示状态消息
-        self.show_status_message(tr("plugin.demo.reset_status"))
+        self.show_status_message(self.tr("plugin.demo.reset_status"))
         
         # 记录日志
         self.log_info(f"Counter reset: {old_count} to 0")
@@ -226,7 +227,7 @@ class Plugin(SimplePluginBase):
     def _on_clear_log(self):
         """清空日志事件处理"""
         self.log_text.clear()
-        message = tr("plugin.demo.log_cleared")
+        message = self.tr("plugin.demo.log_cleared")
         self.log_text.append(f"[INFO] {message}")
         
         # 显示状态消息
@@ -250,18 +251,18 @@ class Plugin(SimplePluginBase):
     def on_language_changed(self):
         """语言变更时更新界面文本"""
         if hasattr(self, 'title_label'):
-            self.title_label.setText(tr("plugin.demo.name"))
+            self.title_label.setText(self.tr("plugin.demo.name"))
         if hasattr(self, 'desc_label'):
-            self.desc_label.setText(tr("plugin.demo.description_detail"))
+            self.desc_label.setText(self.tr("plugin.demo.description_detail"))
         if hasattr(self, 'function_group'):
-            self.function_group.setTitle(tr("plugin.demo.function_demo"))
+            self.function_group.setTitle(self.tr("plugin.demo.function_demo"))
         if hasattr(self, 'counter_label'):
-            self.counter_label.setText(tr("plugin.demo.click_count").format(count=self.click_count))
+            self.counter_label.setText(self.tr("plugin.demo.click_count").format(count=self.click_count))
         if hasattr(self, 'click_button'):
-            self.click_button.setText(tr("plugin.demo.click_button"))
+            self.click_button.setText(self.tr("plugin.demo.click_button"))
         if hasattr(self, 'reset_button'):
-            self.reset_button.setText(tr("plugin.demo.reset_button"))
+            self.reset_button.setText(self.tr("plugin.demo.reset_button"))
         if hasattr(self, 'log_group'):
-            self.log_group.setTitle(tr("plugin.demo.log_title"))
+            self.log_group.setTitle(self.tr("plugin.demo.log_title"))
         if hasattr(self, 'clear_log_button'):
-            self.clear_log_button.setText(tr("plugin.demo.clear_log"))
+            self.clear_log_button.setText(self.tr("plugin.demo.clear_log"))

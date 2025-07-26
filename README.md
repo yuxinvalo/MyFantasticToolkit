@@ -1,35 +1,124 @@
 # HSBC Little Worker Project
-这是一个python开发的个人工作小工具集合。属于集成式的小工具箱。
 
-## Proposal
-这是一个基于Python的HSBC小工项目，用于IT SUPPORT的个人工作，由于HSBC是银行。
-对于隐私非常看重，很多好用的工具是需要自己开发的，所以就有了这个项目，仅用于个人，不涉及网络传输，以及任何机密信息。 
+🛠️ 一个基于Python开发的个人工作小工具集合，采用插件化架构设计的集成式工具箱。
 
-## 工具模块
+## 📋 项目概述
 
-### 自定义截图工具
-自定义截图工具不同于WINDOWS系统的截图工具:
-- 点击截图按钮或者快捷键ALT+SHIFT+A后隐藏自身，鼠标左键拖动自定义截图区域
-- 截图完成后生成一个新的widget，widget包含截图主体，且有工具栏
-- 工具栏包括将图片钉在屏幕上，识别图片文字，允许文字复制，画笔涂改图片（可Redo），保存图片。 
+这是一个专为HSBC IT SUPPORT团队设计的Python小工具项目。由于银行对隐私和安全的严格要求，许多实用工具需要内部开发。本项目致力于提供一个安全、高效的个人工作工具集合，**完全本地化运行，不涉及任何网络传输和机密信息处理**。
 
-### 工作日志工具
-IT SUPPORT需要每日监控业务数据的ETL过程，为了记录下每日的工作情况，需要一个小日记本记录，方便handover给下一个组。
-日志是markdown格式撰写，且可以自定义工作日志模板。 可以导出为markdown, pdf等格式。
-关于Markdown工作日志：
-- 实时预览 ：集成markdown解析器（如marko）+ QWebEngineView 显示HTML
-- 语法高亮 ：使用 QSyntaxHighlighter 为markdown语法着色
-- 工具栏 ：添加常用markdown格式化按钮
+### ✨ 核心特性
 
+- 🔌 **插件化架构**：模块化设计，易于扩展和维护
+- 🛡️ **安全可靠**：完全本地运行，无网络依赖
+- 🎨 **现代化UI**：基于PySide6的扁平化界面设计
+- 🌍 **国际化支持**：支持中英文界面切换
+- ⚙️ **配置灵活**：支持插件启用/禁用和个性化设置
 
-## 软件设计
-软件设计应该是一个插件化的架构，每个工具都是一个插件，插件之间可以调用，也可以独立运行。   
-软件图标： resources/icon.svg
+## 🚀 当前状态
 
-## 技术栈
-软件定义是需要简单易用，尽量轻量级，UI风格扁平化。由于内部限制，方便开发和维护，只使用python。 
-- UI： pyside6
-- markdown解析器：marko
-- 项目管理：uv
-- 插件化架构：python的importlib模块
+### ✅ 已实现功能
+
+- **核心框架**：完整的插件化应用程序框架
+- **插件管理器**：动态插件加载、卸载和配置管理
+- **国际化系统**：多语言支持（中文/英文）
+- **配置管理**：JSON格式的配置文件系统
+- **日志系统**：完整的日志记录和管理
+- **演示插件**：展示插件开发和集成的示例
+
+### 📦 项目结构
+
+```
+HSBCLittleWorker/
+├── main.py                    # 🚀 主程序入口
+├── pyproject.toml             # 📋 uv项目配置
+├── config/                    # ⚙️ 配置文件目录
+│   ├── settings.py            # 全局配置
+│   └── plugin_config.json     # 插件配置
+├── core/                      # 🏗️ 核心框架
+│   ├── application.py         # 主应用程序类
+│   ├── plugin_manager.py      # 插件管理器
+│   ├── plugin_base.py         # 插件基类
+│   ├── main_window.py         # 主窗口
+│   ├── i18n.py               # 国际化管理
+│   └── settings_dialog.py     # 设置对话框
+├── plugins/                   # 🔌 插件目录
+│   └── demo_plugin/           # 演示插件
+├── utils/                     # 🛠️ 工具模块
+│   └── logger.py              # 日志工具
+├── resources/                 # 📁 资源文件
+│   ├── icon.svg              # 应用图标
+│   └── translations/          # 国际化文件
+└── docs/                      # 📚 文档
+```
+
+## 🎯 待实现功能清单
+
+### 🖼️ 自定义截图工具插件
+
+**功能描述**：专业的截图工具，超越Windows系统自带截图功能
+
+**核心特性**：
+- 🎯 快捷键触发（ALT+SHIFT+A）自动隐藏主窗口
+- 🖱️ 鼠标拖拽自定义截图区域选择
+- 🛠️ 截图后弹出编辑工具栏，包含：
+  - 📌 图片钉在屏幕上（悬浮显示）
+  - 🔍 OCR文字识别和复制功能
+  - ✏️ 画笔涂改工具（支持撤销/重做）
+  - 💾 图片保存和导出功能
+
+### 📝 工作日志工具插件
+
+**功能描述**：专为IT SUPPORT日常工作设计的Markdown日志工具
+
+**应用场景**：记录ETL过程监控、问题处理、工作交接等
+
+**核心特性**：
+- 📄 Markdown格式编写，支持丰富的文本格式
+- 👀 实时预览（marko解析器 + QWebEngineView）
+- 🎨 语法高亮（QSyntaxHighlighter）
+- 🛠️ 格式化工具栏（常用Markdown快捷按钮）
+- 📋 自定义工作日志模板系统
+- 📤 多格式导出（Markdown、PDF、HTML）
+
+## 🛠️ 技术栈
+
+**设计理念**：简单易用、轻量级、扁平化UI设计
+
+**核心技术**：
+- **UI框架**：PySide6 - 现代化的Python GUI框架
+- **Markdown解析**：marko - 高性能Markdown解析器
+- **项目管理**：uv - 现代Python包管理工具
+- **插件系统**：importlib - Python原生动态导入模块
+- **国际化**：自研i18n系统，支持JSON格式翻译文件
+- **日志系统**：Python logging + 自定义格式化
+
+## 🚀 快速开始
+
+### 环境要求
+- Python 3.8+
+- Windows 10/11
+
+### 安装运行
+
+```bash
+# 克隆项目
+git clone <repository-url>
+cd HSBCLittleWorker
+
+# 安装依赖（使用uv）
+uv sync
+
+# 运行应用
+python main.py
+```
+
+## 📖 更多信息
+
+- 📋 [项目结构详细说明](project_structure.md)
+- 🔌 [插件开发指南](docs/plugin_development.md)
+- 📚 [用户使用手册](docs/user_guide.md)
+
+---
+
+**注意**：本项目仅供HSBC内部IT SUPPORT团队使用，严格遵循银行安全规范，不涉及任何敏感数据处理。
 

@@ -14,9 +14,6 @@
       "auto_save_interval": 300,
       "date_format": "yyyy-MM-dd",
       "enable_markdown": true
-    },
-    "demo_plugin": {
-      "click_count": 12
     }
   },
   "ui_settings": {

@@ -1,0 +1,15 @@
+{
+  "plugin.demo.name": "Demo Plugin",
+  "plugin.demo.description": "A demo plugin for testing the plugin system",
+  "plugin.demo.description_detail": "This is a demo plugin that demonstrates the basic features of the plugin system:\n• Plugin interface creation\n• Settings save and load\n• Logging\n• Status message display",
+  "plugin.demo.function_demo": "Function Demo",
+  "plugin.demo.click_count": "Click Count: {count}",
+  "plugin.demo.click_button": "Click Me",
+  "plugin.demo.reset_button": "Reset Counter",
+  "plugin.demo.clear_log": "Clear Log",
+  "plugin.demo.log_title": "Log Information",
+  "plugin.demo.clicked_message": "Button clicked, current count: {count}",
+  "plugin.demo.reset_message": "Counter reset from {old_count} to 0",
+  "plugin.demo.reset_status": "Counter has been reset",
+  "plugin.demo.log_cleared": "Log has been cleared"
+}

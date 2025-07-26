@@ -1,0 +1,15 @@
+{
+  "plugin.demo.name": "演示插件",
+  "plugin.demo.description": "用于测试插件系统的演示插件",
+  "plugin.demo.description_detail": "这是一个演示插件，展示了插件系统的基本功能：\n• 插件界面创建\n• 设置保存和读取\n• 日志记录\n• 状态消息显示",
+  "plugin.demo.function_demo": "功能演示",
+  "plugin.demo.click_count": "点击次数: {count}",
+  "plugin.demo.click_button": "点击我",
+  "plugin.demo.reset_button": "重置计数器",
+  "plugin.demo.clear_log": "清空日志",
+  "plugin.demo.log_title": "日志信息",
+  "plugin.demo.clicked_message": "按钮被点击，当前次数: {count}",
+  "plugin.demo.reset_message": "计数器已重置，从 {old_count} 重置为 0",
+  "plugin.demo.reset_status": "计数器已重置",
+  "plugin.demo.log_cleared": "日志已清空"
+}

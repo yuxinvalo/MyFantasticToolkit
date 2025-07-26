@@ -3,6 +3,7 @@
 HSBC Little Worker - 设置对话框
 """
 
+import traceback
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QTabWidget,
     QWidget, QLabel, QComboBox, QPushButton, QGroupBox,
@@ -36,7 +37,7 @@ class SettingsDialog(QDialog):
         # 连接信号
         self._connect_signals()
         
-        logger.debug("设置对话框初始化完成")
+        logger.debug("[SETTINGS] Settings dialog initialized.")
     
     def _init_ui(self):
         """初始化用户界面"""
@@ -147,11 +148,6 @@ class SettingsDialog(QDialog):
         
         language_layout.addRow(tr("settings.language") + ":", self.language_combo)
         
-        # 添加说明文本
-        # info_label = QLabel("语言更改将在重启应用程序后生效")
-        # info_label.setStyleSheet("color: #666666; font-size: 10px;")
-        # language_layout.addRow("", info_label)
-        
         layout.addWidget(language_group)
         layout.addStretch()
         
@@ -211,14 +207,14 @@ class SettingsDialog(QDialog):
         config_path = self._get_config_path()
         
         if not os.path.exists(config_path):
-            logger.warning("⚠️ Config file not found, using default settings")
+            logger.warning("[SETTINGS] Config file not found, using default settings")
             return {}
         
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
-            logger.error(f"❌ Failed to load config: {e}")
+            logger.error(f"[SETTINGS] Failed to load config: {e} - {traceback.format_exc()}")
             return {}
     
     def _save_config(self, config):
@@ -235,7 +231,7 @@ class SettingsDialog(QDialog):
             
             return True
         except Exception as e:
-            logger.error(f"❌ Failed to save config: {e}")
+            logger.error(f"[SETTINGS] Failed to save config: {e} - {traceback.format_exc()}")
             return False
     
     def _load_settings(self):
@@ -276,10 +272,10 @@ class SettingsDialog(QDialog):
             self.auto_start_checkbox.setChecked(startup_settings.get("auto_start", False))
             self.minimize_to_tray_checkbox.setChecked(startup_settings.get("minimize_to_tray", True))
             
-            logger.debug("⚙️ Settings loaded successfully")
+            logger.debug("[SETTINGS] Settings loaded successfully")
             
         except Exception as e:
-            logger.error(f"❌ Failed to load settings: {e}")
+            logger.error(f"[SETTINGS] Failed to load settings: {e} - {traceback.format_exc()}")
             self._reset_settings()
     
     def _apply_settings(self):
@@ -299,25 +295,25 @@ class SettingsDialog(QDialog):
             if selected_language:
                 self.i18n_manager.set_language(selected_language)
                 config["ui_settings"]["language"] = selected_language
-                logger.info(f"🌐 Language updated: {selected_language}")
+                logger.info(f"[SETTINGS] 🌐 Language updated: {selected_language}")
             
             # 应用主题设置
             selected_theme = self.theme_combo.currentData()
             if selected_theme:
                 config["ui_settings"]["theme"] = selected_theme
-                logger.info(f"🎨 Theme updated: {selected_theme}")
+                logger.info(f"[SETTINGS] 🎨 Theme updated: {selected_theme}")
             
             # 应用字体大小设置
             font_size = self.font_size_spinbox.value()
             config["ui_settings"]["font_size"] = font_size
-            logger.info(f"🔤 Font size updated: {font_size}")
+            logger.info(f"[SETTINGS] 🔤 Font size updated: {font_size}")
             
             # 应用透明度设置
             opacity = self.opacity_slider.value()
             config["ui_settings"]["window_opacity"] = opacity / 100.0
             if self.parent():
                 self.parent().setWindowOpacity(opacity / 100.0)
-            logger.info(f"🔍 Window opacity updated: {opacity}%")
+            logger.info(f"[SETTINGS] 🔍 Window opacity updated: {opacity}%")
             
             # 应用启动设置
             config["startup_settings"]["auto_start"] = self.auto_start_checkbox.isChecked()
@@ -327,12 +323,12 @@ class SettingsDialog(QDialog):
             if self._save_config(config):
                 # 发送设置变更信号
                 self.settings_changed.emit()
-                logger.info("✅ Settings applied and saved")
+                logger.info("[SETTINGS] ✅ Settings applied and saved")
             else:
-                logger.error("❌ Failed to save settings")
+                logger.error("[SETTINGS] ❌ Failed to save settings")
             
         except Exception as e:
-            logger.error(f"❌ Failed to apply settings: {e}")
+            logger.error(f"[SETTINGS] ❌ Failed to apply settings: {e} - {traceback.format_exc()}")
     
     def _reset_settings(self):
         """重置设置为默认值"""
@@ -344,7 +340,7 @@ class SettingsDialog(QDialog):
         self.auto_start_checkbox.setChecked(False)  # 默认不自动启动
         self.minimize_to_tray_checkbox.setChecked(True)  # 默认最小化到托盘
         
-        logger.info("🔄 Settings reset to default values")
+        logger.info("[SETTINGS] 🔄 Settings reset to default values")
     
     def _ok_clicked(self):
         """确定按钮点击事件"""
@@ -377,5 +373,3 @@ class SettingsDialog(QDialog):
         self.apply_button.setText(tr("settings.apply"))
         self.ok_button.setText(tr("settings.ok"))
         self.cancel_button.setText(tr("settings.cancel"))
-        
-        # logger.debug("设置对话框界面文本已更新")

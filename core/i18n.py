@@ -21,6 +21,7 @@ class I18nManager(QObject):
         super().__init__()
         self.current_language = "zh_CN"  # 默认中文
         self.translations: Dict[str, Dict[str, str]] = {}
+        self.plugin_translations: Dict[str, Dict[str, Dict[str, str]]] = {}  # 插件翻译缓存
         self.translator = QTranslator()
         self.available_languages = {
             "zh_CN": "简体中文",
@@ -124,6 +125,51 @@ class I18nManager(QObject):
                     json.dump(translations, f, ensure_ascii=False, indent=2)
             except Exception as e:
                 print(f"Failed to save translation file {translation_file}: {e}")
+    
+    def register_plugin_translations(self, plugin_name: str, translations_dir: str):
+        """注册插件翻译
+        
+        Args:
+            plugin_name: 插件名称
+            translations_dir: 插件翻译文件目录
+        """
+        plugin_translations = {}
+        
+        # 加载插件的翻译文件
+        for lang_code in self.available_languages.keys():
+            translation_file = os.path.join(translations_dir, f"{lang_code}.json")
+            if os.path.exists(translation_file):
+                try:
+                    with open(translation_file, 'r', encoding='utf-8') as f:
+                        plugin_translations[lang_code] = json.load(f)
+                except Exception as e:
+                    print(f"Failed to load plugin translation file {translation_file}: {e}")
+                    plugin_translations[lang_code] = {}
+            else:
+                plugin_translations[lang_code] = {}
+        
+        self.plugin_translations[plugin_name] = plugin_translations
+    
+    def get_plugin_translation(self, plugin_name: str, key: str, language_code: str = None) -> str:
+        """获取插件翻译
+        
+        Args:
+            plugin_name: 插件名称
+            key: 翻译键名
+            language_code: 语言代码，默认使用当前语言
+            
+        Returns:
+            str: 翻译文本
+        """
+        if language_code is None:
+            language_code = self.current_language
+        
+        if plugin_name in self.plugin_translations:
+            plugin_trans = self.plugin_translations[plugin_name]
+            if language_code in plugin_trans:
+                return plugin_trans[language_code].get(key, key)
+        
+        return key
 
 
 # 全局国际化管理器实例
@@ -151,3 +197,7 @@ def set_language(language_code: str):
 def get_current_language() -> str:
     """获取当前语言的便捷函数"""
     return get_i18n_manager().get_current_language()
+
+
+# 全局国际化管理器实例
+i18n_manager = get_i18n_manager()

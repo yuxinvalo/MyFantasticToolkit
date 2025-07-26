@@ -27,18 +27,13 @@ def main():
         socket = QLocalSocket()
         socket.connectToServer(config.APP_NAME)
         if socket.waitForConnected(1000):
-            logger.info("Another instance of HSBC Little Worker is already running. Sending activation signal.")
+            logger.info("[STARTUP] Another instance of HSBC Little Worker is already running. Sending activation signal.")
             # 发送激活信号给已运行的实例
             socket.write(b"ACTIVATE")
             socket.waitForBytesWritten(1000)
             socket.disconnectFromServer()
             sys.exit(0)
         else:
-            # 设置高DPI支持
-            QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-            QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
-            
-            # 创建Qt应用程序
             app = QApplication(sys.argv)
             
             # 创建本地服务器监听新实例连接
@@ -55,7 +50,7 @@ def main():
             if os.path.exists(icon_path):
                 app.setWindowIcon(QIcon(icon_path))
             
-            logger.info("Start HSBC Little Worker Application...")
+            logger.info("[STARTUP] Starting HSBC Little Worker Application...")
             
             # 创建主应用程序实例
             little_worker = LittleWorkerApp()
@@ -63,7 +58,7 @@ def main():
             # 连接本地服务器的新连接信号
             def handle_new_connection():
                 """Handle new local connection"""
-                logger.info("New connection from local server.")
+                logger.info("[STARTUP] New connection from local server.")
                 client_socket = local_server.nextPendingConnection()
                 if client_socket:
                     client_socket.readyRead.connect(lambda: handle_client_message(client_socket))
@@ -72,7 +67,7 @@ def main():
                 """Handle client message"""
                 data = client_socket.readAll().data()
                 if data == b"ACTIVATE":
-                    logger.info("Received activation signal from new instance.")
+                    logger.info("[STARTUP] Received activation signal from new instance.")
                     # 激活主窗口
                     little_worker.show()
                     little_worker.raise_()
@@ -91,7 +86,7 @@ def main():
             sys.exit(app.exec())
         
     except Exception as e:
-        logger.error(f"App start failed with error : {e} - {traceback.format_exc()}")
+        logger.error(f"[STARTUP] App start failed with error : {e} - {traceback.format_exc()}")
         sys.exit(1)
 
 
