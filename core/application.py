@@ -15,7 +15,6 @@ from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QIcon, QPixmap, QAction
 
 from .plugin_manager import PluginManager
-from config.settings import APP_NAME
 from .main_window import MainWindow
 from .i18n import get_i18n_manager, tr
 from utils.logger import logger
@@ -59,7 +58,7 @@ class LittleWorkerApp(QMainWindow):
             config_path = os.path.join(
                 os.path.dirname(os.path.dirname(__file__)), 
                 "config", 
-                "plugin_config.json"
+                "app_config.json"
             )
             
             if os.path.exists(config_path):
@@ -80,7 +79,7 @@ class LittleWorkerApp(QMainWindow):
             config_path = os.path.join(
                 os.path.dirname(os.path.dirname(__file__)), 
                 "config", 
-                "plugin_config.json"
+                "app_config.json"
             )
             
             if not os.path.exists(config_path):
@@ -110,10 +109,28 @@ class LittleWorkerApp(QMainWindow):
         except Exception as e:
             logger.error(f"[SETTINGS] ❌ Failed to load UI settings: {e} - {traceback.format_exc()}")   
     
+    def _get_app_name(self):
+        """从配置文件获取应用名称"""
+        try:
+            config_path = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), 
+                "config", 
+                "app_config.json"
+            )
+            
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                    return config.get("app_info", {}).get("name", "HSBC Little Worker")
+        except Exception as e:
+            logger.error(f"[SETTINGS] ❌ Failed to load app name: {e}")
+        
+        return "HSBC Little Worker"
+    
     def _init_ui(self):
         """初始化用户界面"""
         # 设置窗口属性
-        self.setWindowTitle(APP_NAME)
+        self.setWindowTitle(self._get_app_name())
         self.setMinimumSize(500, 400)
         self.resize(1000, 700)
         
@@ -219,7 +236,7 @@ class LittleWorkerApp(QMainWindow):
             config_path = os.path.join(
                 os.path.dirname(os.path.dirname(__file__)), 
                 "config", 
-                "plugin_config.json"
+                "app_config.json"
             )
             
             config = {}
@@ -362,7 +379,7 @@ class LittleWorkerApp(QMainWindow):
             
         except ImportError:
             # 如果设置对话框不存在，显示简单消息
-            QMessageBox.information(self, "设置", "设置功能正在开发中...")
+            QMessageBox.information(self, tr("settings.title"), tr("settings.under_development"))
         
         logger.debug("[ACTION] ⚙️ Show settings dialog")
     

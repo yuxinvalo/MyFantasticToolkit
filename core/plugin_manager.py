@@ -5,10 +5,10 @@ HSBC Little Worker - 插件管理器
 
 import os
 import sys
-import json
 import importlib
 import importlib.util
 from pathlib import Path
+import traceback
 from typing import Dict, List, Optional, Any
 
 from PySide6.QtCore import QObject, Signal
@@ -26,58 +26,17 @@ class PluginManager(QObject):
     plugin_unloaded = Signal(str)  # 插件卸载信号
     plugin_error = Signal(str, str)  # 插件错误信号 (plugin_name, error_message)
     
-    def __init__(self, app=None):
+    def __init__(self, app):
         super().__init__()
         
         self.app = app
         self.plugins: Dict[str, PluginBase] = {}  # 已加载的插件实例
-        self.plugin_configs: Dict[str, Dict] = {}  # 插件配置
-        
         # 插件目录路径
         self.plugins_dir = Path(__file__).parent.parent / "plugins"
-        self.config_file = Path(__file__).parent.parent / "config" / "plugin_config.json"
         
         # 确保目录存在
         self.plugins_dir.mkdir(exist_ok=True)
-        self.config_file.parent.mkdir(exist_ok=True)
-        
-        # 加载插件配置
-        self._load_plugin_config()
-    
-    def _load_plugin_config(self):
-        """加载插件配置"""
-        try:
-            if self.config_file.exists():
-                with open(self.config_file, 'r', encoding='utf-8') as f:
-                    self.plugin_configs = json.load(f)
-            else:
-                # 创建默认配置
-                self.plugin_configs = {
-                    "enabled_plugins": [],
-                    "plugin_settings": {}
-                }
-                self._save_plugin_config()
-            
-            logger.debug(f"📋 Plugin config loaded: {len(self.plugin_configs.get('enabled_plugins', []))} enabled plugins")
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to load plugin config: {e}")
-            self.plugin_configs = {
-                "enabled_plugins": [],
-                "plugin_settings": {}
-            }
-    
-    def _save_plugin_config(self):
-        """保存插件配置"""
-        try:
-            with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(self.plugin_configs, f, indent=2, ensure_ascii=False)
-            
 
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to save plugin config: {e}")
-    
     def discover_plugins(self) -> List[Dict[str, Any]]:
         """发现可用插件"""
         available_plugins = []
@@ -110,17 +69,7 @@ class PluginManager(QObject):
         try:
             plugin_name = plugin_dir.name
             
-            # 首先尝试从本地配置文件读取插件信息
-            config_file = plugin_dir / "config.json"
-            plugin_config = {}
-            if config_file.exists():
-                try:
-                    with open(config_file, 'r', encoding='utf-8') as f:
-                        plugin_config = json.load(f)
-                except Exception as e:
-                    logger.warning(f"⚠️ Failed to load config for {plugin_name}: {e}")
-            
-            # 尝试导入插件模块获取元信息
+            # 尝试导入插件模块
             spec = importlib.util.spec_from_file_location(
                 f"plugins.{plugin_name}",
                 plugin_dir / "__init__.py"
@@ -135,39 +84,49 @@ class PluginManager(QObject):
             # 获取插件类
             plugin_class = getattr(module, 'Plugin', None)
             if plugin_class is None or not issubclass(plugin_class, PluginBase):
-                logger.warning(f"⚠️ Plugin {plugin_name} has no valid Plugin class")
+                logger.error(f"[PLUGIN] ⚠️ Plugin {plugin_name} has no valid Plugin class")
                 return None
             
-            # 获取插件元信息，优先使用本地配置
-            plugin_info_config = plugin_config.get('plugin_info', {})
-            
-            plugin_info = {
-                'name': plugin_name,
-                'display_name': plugin_info_config.get('display_name', getattr(plugin_class, 'DISPLAY_NAME', plugin_name)),
-                'description': plugin_info_config.get('description', getattr(plugin_class, 'DESCRIPTION', '')),
-                'version': plugin_info_config.get('version', getattr(plugin_class, 'VERSION', '1.0.0')),
-                'author': plugin_info_config.get('author', getattr(plugin_class, 'AUTHOR', '')),
-                'enabled': plugin_info_config.get('enabled', plugin_name in self.plugin_configs.get('enabled_plugins', [])),
-                'path': str(plugin_dir),
-                'class': plugin_class,
-                'has_local_config': config_file.exists()
-            }
-            
-            return plugin_info
+            # 创建临时插件实例，让plugin_base类进行合规性检查和配置处理
+            try:
+                temp_instance = plugin_class(None)  # 传入None作为app参数
+                # 从插件实例获取完整信息（包括合规性检查、配置读取等）
+                plugin_info = temp_instance.get_plugin_info()
+                
+                # 添加管理器相关的额外信息
+                plugin_info.update({
+                    'path': str(plugin_dir),
+                    'class': plugin_class,
+                    'has_local_config': (plugin_dir / "config.json").exists(),
+                })
+                
+                logger.info(f"[PLUGIN] 🔍 Plugin {plugin_name} discovered: {plugin_info}")
+                return plugin_info
+                
+            except Exception as e:
+                logger.error(f"[PLUGIN] ❌ Plugin {plugin_name} validation failed: {e} - {traceback.format_exc()}")
+                return None
             
         except Exception as e:
-            logger.error(f"❌ Failed to get plugin info for {plugin_dir.name}: {e}")
+            logger.error(f"[PLUGIN] ❌ Failed to get plugin info for {plugin_dir.name}: {e} - {traceback.format_exc()}")
             return None
     
     def load_plugins(self):
         """加载所有启用的插件"""
-        enabled_plugins = self.plugin_configs.get('enabled_plugins', [])
+        # 发现所有可用插件
+        available_plugins = self.discover_plugins()
+        
+        # 筛选出启用的插件
+        enabled_plugins = []
+        for plugin_info in available_plugins:
+            if plugin_info.get('enabled', False):
+                enabled_plugins.append(plugin_info['name'])
         
         if not enabled_plugins:
-            logger.info("📦 No enabled plugins found")
+            logger.info("[PLUGIN] 📦 No enabled plugins found")
             return
         
-        logger.info(f"🚀 Loading {len(enabled_plugins)} plugins...")
+        logger.info(f"[PLUGIN] 🚀 Loading {len(enabled_plugins)} enabled plugins: {', '.join(enabled_plugins)}")
         
         for plugin_name in enabled_plugins:
             self.load_plugin(plugin_name)
@@ -175,13 +134,13 @@ class PluginManager(QObject):
     def load_plugin(self, plugin_name: str) -> bool:
         """加载指定插件"""
         if plugin_name in self.plugins:
-            logger.warning(f"⚠️ Plugin {plugin_name} already loaded")
+            logger.warning(f"[PLUGIN] ⚠️ Plugin {plugin_name} already loaded")
             return True
         
         try:
             plugin_dir = self.plugins_dir / plugin_name
             if not plugin_dir.exists():
-                logger.error(f"❌ Plugin directory not found: {plugin_dir}")
+                logger.error(f"[PLUGIN] ❌ Plugin directory not found: {plugin_dir}")
                 return False
             
             # 导入插件模块
@@ -191,7 +150,7 @@ class PluginManager(QObject):
             )
             
             if spec is None or spec.loader is None:
-                logger.error(f"❌ Cannot load plugin module: {plugin_name}")
+                logger.error(f"[PLUGIN] ❌ Cannot load plugin module: {plugin_name}")
                 return False
             
             module = importlib.util.module_from_spec(spec)
@@ -204,7 +163,7 @@ class PluginManager(QObject):
             # 获取插件类
             plugin_class = getattr(module, 'Plugin', None)
             if plugin_class is None:
-                logger.error(f"❌ Plugin {plugin_name} has no Plugin class")
+                logger.error(f"[PLUGIN] ❌ Plugin {plugin_name} has no Plugin class")
                 return False
             
             # 创建插件实例
@@ -212,15 +171,18 @@ class PluginManager(QObject):
             
             # 验证插件实例
             if not isinstance(plugin_instance, PluginBase):
-                logger.error(f"❌ Plugin {plugin_name} is not a subclass of PluginBase")
+                logger.error(f"[PLUGIN] ❌ Plugin {plugin_name} is not a subclass of PluginBase")
                 return False
             
+            # 获取插件信息（包含display_name、description等）
+            plugin_info = plugin_instance.get_plugin_info()
+            
             # 注册插件翻译
-            plugin_dir = os.path.join(self.plugins_dir, plugin_name)
-            translations_dir = os.path.join(plugin_dir, 'translations')
+            plugin_dir_str = str(plugin_dir)
+            translations_dir = os.path.join(plugin_dir_str, 'translations')
             if os.path.exists(translations_dir):
                 i18n_manager.register_plugin_translations(plugin_name, translations_dir)
-                logger.info(f"[插件管理器] 🌐 插件 {plugin_name} 翻译文件已注册")
+                logger.info(f"[PLUGIN] 🌐 The Plugin {plugin_name} translation files have been registered")
             
             # 初始化插件
             plugin_instance.initialize()
@@ -232,11 +194,11 @@ class PluginManager(QObject):
             if self.app and hasattr(self.app, 'get_main_window'):
                 main_window = self.app.get_main_window()
                 if main_window:
-                    # 添加插件按钮
+                    # 添加插件按钮，使用plugin_info中的信息
                     main_window.add_plugin_button(
                         plugin_name,
-                        plugin_instance.get_display_name(),
-                        plugin_instance.get_description()
+                        plugin_info.get('display_name', plugin_name),
+                        plugin_info.get('description', '')
                     )
                     
                     # 连接插件界面请求信号（只连接一次）
@@ -246,20 +208,20 @@ class PluginManager(QObject):
                         )
                         self._signal_connected = True
             
-            logger.info(f"✅ Plugin loaded successfully: {plugin_name}")
+            logger.info(f"[PLUGIN] ✅ Plugin loaded successfully: {plugin_name}")
             self.plugin_loaded.emit(plugin_name)
             
             return True
             
         except Exception as e:
-            logger.error(f"❌ Failed to load plugin {plugin_name}: {e}")
+            logger.error(f"[PLUGIN] ❌ Failed to load plugin {plugin_name}: {e} - {traceback.format_exc()}")
             self.plugin_error.emit(plugin_name, str(e))
             return False
     
     def _handle_plugin_widget_request(self, plugin_name: str):
         """处理插件界面请求"""
         if plugin_name not in self.plugins:
-            logger.warning(f"⚠️ Requested plugin not loaded: {plugin_name}")
+            logger.warning(f"[PLUGIN] ⚠️ Requested plugin not loaded: {plugin_name}")
             return
         
         try:
@@ -269,19 +231,21 @@ class PluginManager(QObject):
             if widget and self.app and hasattr(self.app, 'get_main_window'):
                 main_window = self.app.get_main_window()
                 if main_window:
+                    # 获取插件信息
+                    plugin_info = plugin.get_plugin_info()
                     main_window.add_plugin_widget(
                         plugin_name,
-                        plugin.get_display_name(),
+                        plugin_info.get('display_name', plugin_name),
                         widget
                     )
             
         except Exception as e:
-            logger.error(f"❌ Failed to get plugin widget for {plugin_name}: {e}")
+            logger.error(f"[PLUGIN] ❌ Failed to get plugin widget for {plugin_name}: {e} - {traceback.format_exc()}")
     
     def unload_plugin(self, plugin_name: str) -> bool:
         """卸载指定插件"""
         if plugin_name not in self.plugins:
-            logger.warning(f"⚠️ Plugin {plugin_name} not loaded")
+            logger.warning(f"[PLUGIN] ⚠️ Plugin {plugin_name} not loaded")
             return True
         
         try:
@@ -298,13 +262,13 @@ class PluginManager(QObject):
             if module_name in sys.modules:
                 del sys.modules[module_name]
             
-            logger.info(f"🗑️ Plugin unloaded successfully: {plugin_name}")
+            logger.info(f"[PLUGIN] 🗑️ Plugin unloaded successfully: {plugin_name}")
             self.plugin_unloaded.emit(plugin_name)
             
             return True
             
         except Exception as e:
-            logger.error(f"❌ Failed to unload plugin {plugin_name}: {e}")
+            logger.error(f"[PLUGIN] ❌ Failed to unload plugin {plugin_name}: {e} - {traceback.format_exc()}")
             return False
     
     def enable_plugin(self, plugin_name: str) -> bool:
@@ -361,7 +325,7 @@ class PluginManager(QObject):
     
     def cleanup(self):
         """清理插件管理器"""
-        logger.info("🧹 Cleaning up plugin manager...")
+        logger.info("[PLUGIN] 🧹 Cleaning up plugin manager...")
         
         # 卸载所有插件
         for plugin_name in list(self.plugins.keys()):

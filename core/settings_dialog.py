@@ -196,7 +196,7 @@ class SettingsDialog(QDialog):
         return os.path.join(
             os.path.dirname(os.path.dirname(__file__)), 
             "config", 
-            "plugin_config.json"
+            "app_config.json"
         )
     
     def _load_config(self):

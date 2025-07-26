@@ -16,16 +16,37 @@ from PySide6.QtNetwork import QLocalSocket, QLocalServer
 # 添加项目根目录到Python路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import config.settings as config
+import json
 from core.application import LittleWorkerApp
 from utils.logger import logger
+
+
+def get_app_config():
+    """获取应用配置"""
+    try:
+        config_path = os.path.join(os.path.dirname(__file__), "config", "app_config.json")
+        if os.path.exists(config_path):
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                return config.get("app_info", {})
+    except Exception as e:
+        logger.error(f"[CONFIG] ❌ Failed to load app config: {e}")
+    
+    # 返回默认配置
+    return {
+        "name": "HSBC Little Worker",
+        "version": "1.0.0",
+        "organization": "HSBC Finance IT Support"
+    }
 
 
 def main():
     """主程序入口"""
     try:
+        app_config = get_app_config()
+        
         socket = QLocalSocket()
-        socket.connectToServer(config.APP_NAME)
+        socket.connectToServer(app_config["name"])
         if socket.waitForConnected(1000):
             logger.info("[STARTUP] Another instance of HSBC Little Worker is already running. Sending activation signal.")
             # 发送激活信号给已运行的实例
@@ -38,12 +59,12 @@ def main():
             
             # 创建本地服务器监听新实例连接
             local_server = QLocalServer()
-            local_server.listen(config.APP_NAME)
+            local_server.listen(app_config["name"])
             
             # 设置应用程序信息
-            app.setApplicationName(config.APP_NAME)
-            app.setApplicationVersion(config.APP_VERSION)
-            app.setOrganizationName(config.APP_ORGANIZATION)
+            app.setApplicationName(app_config["name"])
+            app.setApplicationVersion(app_config["version"])
+            app.setOrganizationName(app_config["organization"])
             
             # 设置应用程序图标
             icon_path = os.path.join(os.path.dirname(__file__), "resources", "icon.svg")

@@ -10,8 +10,7 @@ HSBCLittleWorker/
 ├── README.md                  # 项目说明
 ├── config/                    # 配置文件目录
 │   ├── __init__.py
-│   ├── settings.py            # 全局配置
-│   └── plugin_config.json     # 插件配置
+│   └── app_config.json        # 应用配置（包含插件配置和全局设置）
 ├── core/                      # 核心框架
 │   ├── __init__.py
 │   ├── application.py         # 主应用程序类
@@ -264,7 +263,7 @@ dev-dependencies = [
 ]
 ```
 
-### 插件配置 (config/plugin_config.json)
+### 应用配置 (config/app_config.json)
 ```json
 {
     "plugins": {

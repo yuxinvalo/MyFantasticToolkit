@@ -29,6 +29,7 @@ class PluginBase(QObject, ABC, metaclass=PluginMeta):
     """
     
     # 插件元信息（子类应该重写这些属性）
+    NAME = "Unknown Plugin"
     DISPLAY_NAME = "Unknown Plugin"
     DESCRIPTION = "Unknown Plugin Description"
     VERSION = "1.0.0"
@@ -45,6 +46,8 @@ class PluginBase(QObject, ABC, metaclass=PluginMeta):
         self._widget = None  # 插件界面组件
         self._initialized = False  # 初始化状态
         self._enabled = True  # 启用状态
+        self.is_available = True  # 插件可用状态
+        self.error_info = None  # 错误信息
         
         # 插件本地化支持
         self._plugin_dir = None
@@ -52,12 +55,13 @@ class PluginBase(QObject, ABC, metaclass=PluginMeta):
         self._translations = {}
         self._current_language = "zh_CN"
         
+        # 插件合规性检查
+        self._check_plugin_compliance()
+    
         # 初始化插件目录和配置
         self._init_plugin_paths()
         self._load_plugin_config()
         self._load_plugin_translations()
-        
-
     
     @abstractmethod
     def initialize(self) -> bool:
@@ -88,7 +92,6 @@ class PluginBase(QObject, ABC, metaclass=PluginMeta):
                 self._widget = None
             
             self._initialized = False
-
             
         except Exception as e:
             logger.error(f"❌ Plugin {self.get_name()} cleanup error: {e}")
@@ -215,6 +218,14 @@ class PluginBase(QObject, ABC, metaclass=PluginMeta):
         if plugin_manager:
             return plugin_manager.get_plugin_setting(self.get_name(), key, default)
         return default
+
+    def get_available_config(self) -> dict:
+        """获取插件配置
+        
+        Returns:
+            dict: 插件配置字典
+        """
+        return self._config.get('available_config', {})
     
     def set_setting(self, key: str, value):
         """设置插件设置
@@ -238,12 +249,15 @@ class PluginBase(QObject, ABC, metaclass=PluginMeta):
     def _init_plugin_paths(self):
         """初始化插件路径"""
         try:
-            # 通过模块路径确定插件目录
-            module_file = sys.modules[self.__class__.__module__].__file__
-            if module_file:
-                self._plugin_dir = Path(module_file).parent
+            # 使用统一的方法获取插件目录
+            self._plugin_dir = self._get_plugin_directory()
+            if self._plugin_dir:
+                logger.debug(f"[PLUGIN] 🔍 Plugin paths initialized: {self._plugin_dir}")
+            else:
+                logger.warning(f"[PLUGIN] ⚠️ Could not determine plugin directory for {self.get_name()}")
         except Exception as e:
-            logger.error(f"❌ [Plugin] Failed to init plugin paths: {e}")
+            import traceback
+            logger.error(f"[PLUGIN] ❌ Failed to init plugin paths: {e} - {traceback.format_exc()}")
     
     def _load_plugin_config(self):
         """加载插件本地配置"""
@@ -396,39 +410,198 @@ class PluginBase(QObject, ABC, metaclass=PluginMeta):
             f"enabled={self._enabled}"
             f")>"
         )
-
-
-class SimplePluginBase(PluginBase):
-    """简单插件基类
     
-    提供一些常用功能的默认实现，适合简单插件继承
-    """
-    
-    def initialize(self) -> bool:
-        """默认初始化实现"""
+    def _check_plugin_compliance(self):
+        """检查插件合规性
+        
+        根据文档要求检查插件是否符合规范：
+        1. 检查必需的类元信息
+        2. 如果config.json不存在，自动生成
+        3. 验证config.json格式
+        """
         try:
-            self._initialized = True
-            self.log_info("✅ Plugin initialized successfully")
-            return True
+            # 检查必需的类元信息
+            required_attrs = ['NAME', 'DISPLAY_NAME', 'DESCRIPTION', 'VERSION', 'AUTHOR']
+            missing_attrs = []
+            
+            for attr in required_attrs:
+                if not hasattr(self.__class__, attr) or getattr(self.__class__, attr) == f"Unknown {attr.replace('_', ' ').title()}":
+                    missing_attrs.append(attr)
+            
+            if missing_attrs:
+                error_msg = f"Missing required attributes: {', '.join(missing_attrs)}"
+                logger.warning(f"⚠️ [Plugin Compliance] {self.get_name()} {error_msg}")
+                self.is_available = False
+                self.error_info = error_msg
+                return
+            
+            # 获取插件目录
+            plugin_dir = self._get_plugin_directory()
+            if not plugin_dir:
+                error_msg = "Cannot determine plugin directory"
+                logger.error(f"❌ [Plugin Compliance] {error_msg} for {self.get_name()}")
+                self.is_available = False
+                self.error_info = error_msg
+                return
+            
+            config_file = plugin_dir / "config.json"
+            
+            # 如果config.json不存在，自动生成
+            if not config_file.exists():
+                if not self._generate_config_file(config_file):
+                    return  # 生成失败，错误信息已设置
+            else:
+                # 验证现有config.json格式
+                if not self._validate_config_file(config_file):
+                    return  # 验证失败，错误信息已设置
+                
         except Exception as e:
-            self.log_error(f"❌ Plugin initialization failed: {e}")
+            import traceback
+            error_msg = f"Error checking compliance: {e}"
+            logger.error(f"❌ [Plugin Compliance] {error_msg} for {self.get_name()} - {traceback.format_exc()}")
+            self.is_available = False
+            self.error_info = error_msg
+    
+    def _get_plugin_directory(self) -> Optional[Path]:
+        """获取插件目录路径"""
+        try:
+            # 尝试从模块文件路径获取
+            module_name = self.__class__.__module__
+            if module_name in sys.modules:
+                module_file = sys.modules[module_name].__file__
+                if module_file:
+                    plugin_dir = Path(module_file).parent
+                    logger.debug(f"[PLUGIN] 🔍 Found plugin directory: {plugin_dir}")
+                    return plugin_dir
+            
+            # 如果上述方法失败，尝试通过插件名称构建路径
+            plugin_name = self.get_name()
+            if plugin_name:
+                # 假设插件位于项目根目录的plugins文件夹下
+                current_file = Path(__file__).resolve()
+                project_root = current_file.parent.parent  # 从core目录回到项目根目录
+                plugin_dir = project_root / "plugins" / plugin_name
+                if plugin_dir.exists():
+                    logger.debug(f"[PLUGIN] 🔍 Found plugin directory via name: {plugin_dir}")
+                    return plugin_dir
+                    
+        except Exception as e:
+            logger.error(f"[PLUGIN] ❌ Failed to get plugin directory: {e} - {traceback.format_exc()}")
+        return None
+    
+    def _generate_config_file(self, config_file: Path) -> bool:
+        """自动生成config.json文件"""
+        try:
+            plugin_name = self.get_name()
+            
+            # 从类元信息生成配置
+            config_data = {
+                "plugin_info": {
+                    "name": plugin_name,
+                    "display_name": getattr(self.__class__, 'DISPLAY_NAME', plugin_name),
+                    "description": getattr(self.__class__, 'DESCRIPTION', 'Plugin description'),
+                    "version": getattr(self.__class__, 'VERSION', '1.0.0'),
+                    "author": getattr(self.__class__, 'AUTHOR', 'Unknown Author')
+                },
+                "available_config": {
+                    "enabled": True
+                }
+            }
+            
+            # 创建目录（如果不存在）
+            config_file.parent.mkdir(parents=True, exist_ok=True)
+            
+            # 写入配置文件
+            with open(config_file, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=2, ensure_ascii=False)
+            
+            logger.info(f"📋 [Plugin Compliance] Auto-generated config.json for {plugin_name}")
+            return True
+            
+        except Exception as e:
+            import traceback
+            error_msg = f"Failed to generate config.json: {e}"
+            logger.error(f"❌ [Plugin Compliance] {error_msg} for {self.get_name()} - {traceback.format_exc()}")
+            self.is_available = False
+            self.error_info = error_msg
             return False
     
-    def create_widget(self) -> Optional[QWidget]:
-        """默认界面创建实现
-        
-        子类应该重写此方法来创建具体的界面
-        """
-        from PySide6.QtWidgets import QLabel
-        
-        widget = QLabel(f"This is the default interface of the {self.get_display_name()} plugin")
-        widget.setStyleSheet(
-            "QLabel {"
-            "    padding: 50px;"
-            "    text-align: center;"
-            "    font-size: 14px;"
-            "    color: #666666;"
-            "}"
-        )
-        
-        return widget
+    def _validate_config_file(self, config_file: Path) -> bool:
+        """验证config.json文件格式"""
+        try:
+            with open(config_file, 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+            
+            # 检查必需的字段
+            if 'plugin_info' not in config_data:
+                error_msg = "config.json missing 'plugin_info' field"
+                logger.error(f"❌ [Plugin Compliance] {self.get_name()} {error_msg}")
+                self.is_available = False
+                self.error_info = error_msg
+                return False
+            
+            if 'available_config' not in config_data:
+                error_msg = "config.json missing 'available_config' field"
+                logger.error(f"❌ [Plugin Compliance] {self.get_name()} {error_msg}")
+                self.is_available = False
+                self.error_info = error_msg
+                return False
+            
+            plugin_info = config_data['plugin_info']
+            required_info_fields = ['name', 'display_name', 'description', 'version', 'author']
+            
+            for field in required_info_fields:
+                if field not in plugin_info:
+                    error_msg = f"config.json missing required field: plugin_info.{field}"
+                    logger.error(f"❌ [Plugin Compliance] {self.get_name()} {error_msg}")
+                    self.is_available = False
+                    self.error_info = error_msg
+                    return False
+            
+            available_config = config_data['available_config']
+            if 'enabled' not in available_config:
+                error_msg = "config.json missing required field: available_config.enabled"
+                logger.error(f"❌ [Plugin Compliance] {self.get_name()} {error_msg}")
+                self.is_available = False
+                self.error_info = error_msg
+                return False
+            
+            if not isinstance(available_config['enabled'], bool):
+                error_msg = "config.json 'enabled' field must be boolean"
+                logger.error(f"❌ [Plugin Compliance] {self.get_name()} {error_msg}")
+                self.is_available = False
+                self.error_info = error_msg
+                return False
+            
+            logger.debug(f"✅ [Plugin Compliance] {self.get_name()} config.json validation passed")
+            return True
+            
+        except json.JSONDecodeError as e:
+            error_msg = f"config.json is not valid JSON: {e}"
+            logger.error(f"❌ [Plugin Compliance] {self.get_name()} {error_msg}")
+            self.is_available = False
+            self.error_info = error_msg
+            return False
+        except Exception as e:
+            import traceback
+            error_msg = f"Failed to validate config.json: {e}"
+            logger.error(f"❌ [Plugin Compliance] {error_msg} for {self.get_name()} - {traceback.format_exc()}")
+            self.is_available = False
+            self.error_info = error_msg
+            return False
+    
+    def get_plugin_info(self) -> dict:
+        """获取插件信息字典"""
+        return {
+            'name': self.get_name(),
+            'display_name': self.get_display_name(),
+            'description': self.get_description(),
+            'version': self.get_version(),
+            'author': self.get_author(),
+            'is_available': self.is_available,
+            'error_info': self.error_info,
+            'enabled': self.is_enabled(),
+            'config': self.get_available_config()
+        }
+
+

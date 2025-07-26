@@ -32,8 +32,7 @@ HSBCLittleWorker/
 ├── main.py                    # 🚀 Main program entry
 ├── pyproject.toml             # 📋 uv project configuration
 ├── config/                    # ⚙️ Configuration directory
-│   ├── settings.py            # Global settings
-│   └── plugin_config.json     # Plugin configuration
+│   └── app_config.json        # Application configuration (includes plugin config and global settings)
 ├── core/                      # 🏗️ Core framework
 │   ├── application.py         # Main application class
 │   ├── plugin_manager.py      # Plugin manager

@@ -105,6 +105,7 @@
   "settings.cancel": "Cancel",
   "settings.ok": "OK",
   "settings.reset": "Reset",
+  "settings.under_development": "Settings feature is under development...",
   
   "dialog.confirm": "Confirm",
   "dialog.warning": "Warning",

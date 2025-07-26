@@ -105,6 +105,7 @@
   "settings.cancel": "取消",
   "settings.ok": "确定",
   "settings.reset": "重置",
+  "settings.under_development": "设置功能正在开发中...",
   
   "dialog.confirm": "确认",
   "dialog.warning": "警告",

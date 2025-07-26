@@ -207,7 +207,7 @@ class Plugin(PluginBase):
 ### 🔄 插件配置重构方案
 
 **当前架构问题**：
-- 所有插件配置集中在全局 `config/plugin_config.json` 中
+- 所有插件配置集中在全局 `config/app_config.json` 中
 - 翻译文件都在 `resources/translations/` 全局目录
 - 插件缺乏独立性，难以独立分发和维护
 
@@ -282,6 +282,7 @@ class Plugin(SimplePluginBase):
 ## 🌍 国际化支持
 
 ### 翻译文件
+目前插件系统必须且仅仅只支持中文和英文两种语言，通过 `translations/` 目录下的 JSON 文件进行配置。不符合规则的插件将无法使用。
 创建 `translations/` 目录：
 ```
 my_plugin/
@@ -416,25 +417,29 @@ class Plugin(SimplePluginBase):  # 必须继承自 PluginBase 或其子类
 ```
 
 ### 插件启用配置
-
-在 `config/plugins.json` 中配置启用的插件：
+config.json文档必须存在，且包含以下字段，否则插件将无法使用。如果不使用config.json，插件的类的元信息则必须包含以下配置，在正确读取元信息后，config.json将会自动生成在该plugin目录下。
 
 ```json
-{
-    "enabled_plugins": [
-        "demo_plugin",
-        "my_plugin",
-        "another_plugin"
-    ],
-    "plugin_settings": {
-        "my_plugin": {
-            "user_name": "张三",
-            "auto_save": true,
-            "theme_color": "#007bff"
-        }
-    }
-}
+"plugin_info": {
+    "name": "demo_plugin",
+    "display_name": "Demo Plugin",
+    "description": "A demo plugin for testing the plugin system",
+    "version": "1.0.0",
+    "author": "HSBC IT Support",
+  },
+"available_config":{
+    "enabled": true
+  }
 ```
+
+关于插件配置字段，其中plugin_info不支持修改。支持修改的配置应当放在available_config字段中。    
+可配置的字段有：
+- "enabled": 必须带的布尔字段，用于控制插件是否启用。
+- bool: 将会作为开关UI显示
+- string: 将会作为文本输入框UI显示
+- int: 将会作为数字输入框UI显示
+- list: 将会作为列表选择框UI显示
+- "keyboard": 将会作为键盘输入框UI显示
 
 ## 💡 最佳实践
 

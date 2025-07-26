@@ -4,11 +4,13 @@
     "display_name": "Demo Plugin",
     "description": "A demo plugin for testing the plugin system",
     "version": "1.0.0",
-    "author": "HSBC IT Support",
+    "author": "HSBC IT Support"
+  },
+  "available_config": {
     "enabled": true
   },
   "settings": {
-    "click_count": 14
+    "click_count": 6
   },
   "ui_settings": {
     "show_logs": true,

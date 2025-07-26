@@ -1,0 +1,17 @@
+{
+  "app_info": {
+    "name": "HSBC Little Worker",
+    "version": "1.0.0",
+    "organization": "HSBC Finance IT Support"
+  },
+  "ui_settings": {
+    "theme": "light",
+    "font_size": 8,
+    "window_opacity": 0.9,
+    "language": "en_US"
+  },
+  "startup_settings": {
+    "auto_start": false,
+    "minimize_to_tray": true
+  }
+}

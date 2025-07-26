@@ -18,6 +18,7 @@ class Plugin(PluginBase):
     """Demo Plugin class"""
     
     # 插件元信息
+    NAME = "demo_plugin"
     DISPLAY_NAME = "Demo Plugin"
     DESCRIPTION = "This is a demo plugin to show basic plugin system features"
     VERSION = "1.0.0"
