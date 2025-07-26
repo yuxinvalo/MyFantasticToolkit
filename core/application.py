@@ -6,6 +6,7 @@ HSBC Little Worker - 主应用程序类
 import os
 import json
 from warnings import deprecated
+import traceback
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QToolBar, QStatusBar, QMenuBar, QMenu,
@@ -268,12 +269,40 @@ class LittleWorkerApp(QMainWindow):
             # 连接插件信号
             self.plugin_manager.plugin_loaded.connect(self._on_plugin_loaded)
             self.plugin_manager.plugin_unloaded.connect(self._on_plugin_unloaded)
+            self.plugin_manager.plugin_enabled.connect(self._on_plugin_enabled)
+            self.plugin_manager.plugin_disabled.connect(self._on_plugin_disabled)
             
             # 加载插件
             self.plugin_manager.load_plugins()
             
+            # 同步插件按钮状态
+            self._sync_plugin_button_states()
+            
         except Exception as e:
             logger.error(f"[PLUGIN] ❌ Plugin manager initialization failed: {e} - {traceback.format_exc()}")
+    
+    def _sync_plugin_button_states(self):
+        """同步插件按钮状态与插件加载状态"""
+        try:
+            if not self.main_window or not hasattr(self.main_window, 'plugin_buttons'):
+                return
+            
+            # 获取所有已加载的插件
+            loaded_plugins = self.plugin_manager.get_loaded_plugins()
+            
+            # 遍历所有插件按钮，设置正确的状态
+            for plugin_name, button in self.main_window.plugin_buttons.items():
+                if plugin_name in loaded_plugins:
+                    # 插件已加载，启用按钮
+                    self.main_window.enable_plugin_button(plugin_name)
+                else:
+                    # 插件未加载，禁用按钮
+                    self.main_window.disable_plugin_button(plugin_name)
+            
+            logger.info(f"[PLUGIN] 🔄 Plugin button states synchronized")
+            
+        except Exception as e:
+            logger.error(f"[PLUGIN] ❌ Failed to sync plugin button states: {e} - {traceback.format_exc()}")
     
     def _init_system_tray(self):
         """初始化系统托盘"""
@@ -328,6 +357,16 @@ class LittleWorkerApp(QMainWindow):
         self.plugin_unloaded.emit(plugin_name)
         logger.debug(f"[PLUGIN] 🔌 Plugin unloaded: {plugin_name}")
     
+    def _on_plugin_enabled(self, plugin_name):
+        """插件启用回调"""
+        self.statusBar().showMessage(tr("status.plugin_enabled").format(name=plugin_name), 3000)
+        logger.debug(f"[PLUGIN] ✅ Plugin enabled: {plugin_name}")
+    
+    def _on_plugin_disabled(self, plugin_name):
+        """插件禁用回调"""
+        self.statusBar().showMessage(tr("status.plugin_disabled").format(name=plugin_name), 3000)
+        logger.debug(f"[PLUGIN] ❌ Plugin disabled: {plugin_name}")
+    
     def _on_tray_activated(self, reason):
         """系统托盘激活事件"""
         if reason == QSystemTrayIcon.DoubleClick:
@@ -338,42 +377,74 @@ class LittleWorkerApp(QMainWindow):
                 self.raise_()
                 self.activateWindow()
     
+    def _center_dialog(self, dialog):
+        """将对话框相对于主窗口居中显示"""
+        # 获取主窗口的几何信息
+        main_window_geometry = self.geometry()
+        
+        # 计算主窗口中心位置
+        main_window_center_x = main_window_geometry.x() + main_window_geometry.width() // 2.5
+        main_window_center_y = main_window_geometry.y() + main_window_geometry.height() // 2.5
+        
+        # 获取对话框的大小
+        dialog_size = dialog.sizeHint()
+        dialog_width = dialog_size.width()
+        dialog_height = dialog_size.height()
+        
+        # 计算对话框的位置，使其显示在主窗口中心
+        dialog_x = main_window_center_x - dialog_width // 2
+        dialog_y = main_window_center_y - dialog_height // 2
+        
+        # 设置对话框位置
+        dialog.move(dialog_x, dialog_y)
+    
     def _show_plugin_manager(self):
         """显示插件管理器"""
-        # TODO: 实现插件管理器对话框
-        self.statusBar().showMessage(tr("status.plugin_manager_todo"), 3000)
+        try:
+            from .plugin_manager_dialog import PluginManagerDialog
+            
+            dialog = PluginManagerDialog(self.plugin_manager, self)
+            
+            # 连接插件启用/禁用信号
+            dialog.plugin_enabled.connect(self.plugin_manager.enable_plugin)
+            dialog.plugin_disabled.connect(self.plugin_manager.disable_plugin)
+            
+            # 连接插件加载/卸载信号到主窗口按钮状态更新
+            dialog.plugin_loaded.connect(self.main_window.enable_plugin_button)
+            dialog.plugin_unloaded.connect(self.main_window.disable_plugin_button)
+            
+            # 连接插件状态变更信号到对话框刷新
+            self.plugin_manager.plugin_enabled.connect(dialog.refresh_plugin_list)
+            self.plugin_manager.plugin_disabled.connect(dialog.refresh_plugin_list)
+            self.plugin_manager.plugin_loaded.connect(dialog.refresh_plugin_list)
+            self.plugin_manager.plugin_unloaded.connect(dialog.refresh_plugin_list)
+            
+            # 居中显示对话框
+            self._center_dialog(dialog)
+            
+            dialog.exec()
+            
+        except ImportError as e:
+            logger.error(f"[PLUGIN_MANAGER] ❌ Failed to import plugin manager dialog: {e}")
+            QMessageBox.warning(self, tr("plugin_manager.error"), tr("plugin_manager.dialog_error"))
+        except Exception as e:
+            logger.error(f"[PLUGIN_MANAGER] ❌ Error showing plugin manager: {e}")
+            QMessageBox.warning(self, tr("plugin_manager.error"), str(e))
+        
         logger.debug("[ACTION] 🔧 Show plugin manager")
     
     def _show_settings(self):
         """显示设置对话框"""
         try:
             from .settings_dialog import SettingsDialog
-            from PySide6.QtWidgets import QApplication
             
             dialog = SettingsDialog(self)
             
             # 连接设置变更信号
             dialog.settings_changed.connect(self._on_settings_changed)
             
-            # 获取屏幕几何信息
-            screen = QApplication.primaryScreen()
-            screen_geometry = screen.availableGeometry()
-            
-            # 计算屏幕中心位置
-            screen_center_x = screen_geometry.x() + screen_geometry.width() // 2
-            screen_center_y = screen_geometry.y() + screen_geometry.height() // 2
-            
-            # 获取对话框的大小
-            dialog_size = dialog.sizeHint()
-            dialog_width = dialog_size.width()
-            dialog_height = dialog_size.height()
-            
-            # 计算对话框的位置，使其显示在屏幕中心
-            dialog_x = screen_center_x - dialog_width // 2
-            dialog_y = screen_center_y - dialog_height // 2
-            
-            # 设置对话框位置
-            dialog.move(dialog_x, dialog_y)
+            # 居中显示对话框
+            self._center_dialog(dialog)
             
             dialog.exec()
             

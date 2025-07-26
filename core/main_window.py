@@ -26,6 +26,8 @@ class MainWindow(QWidget):
         
         # 存储插件界面
         self.plugin_widgets = {}
+        # 存储插件按钮
+        self.plugin_buttons = {}
         
         # 获取国际化管理器
         self.i18n_manager = get_i18n_manager()
@@ -292,6 +294,9 @@ class MainWindow(QWidget):
             }
         """)
         
+        # 存储插件按钮引用
+        self.plugin_buttons[plugin_name] = button
+        
         # 插入到弹性空间之前
         self.plugin_buttons_layout.insertWidget(
             self.plugin_buttons_layout.count() - 1, 
@@ -348,8 +353,52 @@ class MainWindow(QWidget):
     
     def remove_plugin_button(self, plugin_name):
         """移除插件按钮"""
-        # TODO: 实现移除插件按钮的逻辑
-        logger.debug(f"[PLUGIN] 🗑️ Plugin button removed: {plugin_name}")
+        if plugin_name in self.plugin_buttons:
+            button = self.plugin_buttons[plugin_name]
+            self.plugin_buttons_layout.removeWidget(button)
+            button.deleteLater()
+            del self.plugin_buttons[plugin_name]
+            logger.debug(f"[PLUGIN] 🗑️ Plugin button removed: {plugin_name}")
+            
+            # 如果没有插件按钮了，显示默认提示
+            if not self.plugin_buttons:
+                self.no_plugins_label = QLabel(tr("plugins.none_available"))
+                self.no_plugins_label.setAlignment(Qt.AlignCenter)
+                self.no_plugins_label.setStyleSheet("color: #999999; padding: 20px;")
+                self.plugin_buttons_layout.insertWidget(
+                     self.plugin_buttons_layout.count() - 1,
+                     self.no_plugins_label
+                 )
+    
+    def enable_plugin_button(self, plugin_name):
+        """启用插件按钮"""
+        if plugin_name in self.plugin_buttons:
+            button = self.plugin_buttons[plugin_name]
+            button.setEnabled(True)
+            button.setStyleSheet("""
+                QPushButton {
+                    text-align: left;
+                    padding-left: 12px;
+                    font-weight: bold;
+                }
+            """)
+            logger.debug(f"[PLUGIN] ✅ Plugin button enabled: {plugin_name}")
+    
+    def disable_plugin_button(self, plugin_name):
+        """禁用插件按钮"""
+        if plugin_name in self.plugin_buttons:
+            button = self.plugin_buttons[plugin_name]
+            button.setEnabled(False)
+            button.setStyleSheet("""
+                QPushButton {
+                    text-align: left;
+                    padding-left: 12px;
+                    font-weight: bold;
+                    color: #999999;
+                    background-color: #f5f5f5;
+                }
+            """)
+            logger.debug(f"[PLUGIN] ❌ Plugin button disabled: {plugin_name}")
     
     def on_language_changed(self):
         """语言变更时更新界面文本"""
@@ -392,8 +441,6 @@ class MainWindow(QWidget):
     def get_plugin_widget(self, plugin_name):
         """获取插件界面"""
         return self.plugin_widgets.get(plugin_name)
-    
-
     
     def show_plugin_manager(self):
         """显示插件管理器"""

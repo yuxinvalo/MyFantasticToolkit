@@ -5,10 +5,10 @@ HSBC Little Worker - 插件管理器
 
 import os
 import sys
-import importlib
+import json
 import importlib.util
-from pathlib import Path
 import traceback
+from pathlib import Path
 from typing import Dict, List, Optional, Any
 
 from PySide6.QtCore import QObject, Signal
@@ -22,9 +22,11 @@ class PluginManager(QObject):
     """插件管理器类"""
     
     # 信号定义
-    plugin_loaded = Signal(str)  # 插件加载信号
-    plugin_unloaded = Signal(str)  # 插件卸载信号
+    plugin_loaded = Signal(str)  # 插件加载完成信号
+    plugin_unloaded = Signal(str)  # 插件卸载完成信号
     plugin_error = Signal(str, str)  # 插件错误信号 (plugin_name, error_message)
+    plugin_enabled = Signal(str)  # 插件启用信号
+    plugin_disabled = Signal(str)  # 插件禁用信号
     
     def __init__(self, app):
         super().__init__()
@@ -36,6 +38,10 @@ class PluginManager(QObject):
         
         # 确保目录存在
         self.plugins_dir.mkdir(exist_ok=True)
+        
+        # 插件配置
+        self.plugin_configs = {}
+        self._load_plugin_configs()
 
     def discover_plugins(self) -> List[Dict[str, Any]]:
         """发现可用插件"""
@@ -194,12 +200,18 @@ class PluginManager(QObject):
             if self.app and hasattr(self.app, 'get_main_window'):
                 main_window = self.app.get_main_window()
                 if main_window:
-                    # 添加插件按钮，使用plugin_info中的信息
-                    main_window.add_plugin_button(
-                        plugin_name,
-                        plugin_info.get('display_name', plugin_name),
-                        plugin_info.get('description', '')
-                    )
+                    # 检查按钮是否已存在，如果不存在则添加，否则只启用
+                    if hasattr(main_window, 'plugin_buttons') and plugin_name in main_window.plugin_buttons:
+                        # 按钮已存在，只需启用
+                        if hasattr(main_window, 'enable_plugin_button'):
+                            main_window.enable_plugin_button(plugin_name)
+                    else:
+                        # 按钮不存在，添加新按钮
+                        main_window.add_plugin_button(
+                            plugin_name,
+                            plugin_info.get('display_name', plugin_name),
+                            plugin_info.get('description', '')
+                        )
                     
                     # 连接插件界面请求信号（只连接一次）
                     if not hasattr(self, '_signal_connected'):
@@ -257,6 +269,12 @@ class PluginManager(QObject):
             # 从插件字典中移除
             del self.plugins[plugin_name]
             
+            # 禁用主窗口的插件按钮（不移除按钮）
+            if self.app and hasattr(self.app, 'get_main_window'):
+                main_window = self.app.get_main_window()
+                if main_window and hasattr(main_window, 'disable_plugin_button'):
+                    main_window.disable_plugin_button(plugin_name)
+            
             # 从sys.modules中移除
             module_name = f"plugins.{plugin_name}"
             if module_name in sys.modules:
@@ -281,7 +299,11 @@ class PluginManager(QObject):
             self._save_plugin_config()
             
             # 立即加载插件
-            return self.load_plugin(plugin_name)
+            success = self.load_plugin(plugin_name)
+            if success:
+                self.plugin_enabled.emit(plugin_name)
+                logger.info(f"[PLUGIN] ✅ Plugin enabled: {plugin_name}")
+            return success
         
         return True
     
@@ -295,7 +317,11 @@ class PluginManager(QObject):
             self._save_plugin_config()
             
             # 卸载插件
-            return self.unload_plugin(plugin_name)
+            success = self.unload_plugin(plugin_name)
+            if success:
+                self.plugin_disabled.emit(plugin_name)
+                logger.info(f"[PLUGIN] ❌ Plugin disabled: {plugin_name}")
+            return success
         
         return True
     
@@ -332,3 +358,46 @@ class PluginManager(QObject):
             self.unload_plugin(plugin_name)
         
         logger.info("✨ Plugin manager cleanup completed")
+    
+    def _load_plugin_configs(self):
+        """加载插件配置"""
+        config_file = self.plugins_dir / "plugin_config.json"
+        
+        if config_file.exists():
+            try:
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    content = f.read().strip()
+                    if content:  # 检查文件是否为空
+                        self.plugin_configs = json.loads(content)
+                    else:
+                        # 文件为空，使用默认配置
+                        self.plugin_configs = {
+                            'enabled_plugins': [],
+                            'plugin_settings': {}
+                        }
+                logger.debug("[PLUGIN] 📋 Plugin configurations loaded")
+            except Exception as e:
+                logger.error(f"[PLUGIN] ❌ Failed to load plugin config: {e} - {traceback.format_exc()}")
+                self.plugin_configs = {
+                    'enabled_plugins': [],
+                    'plugin_settings': {}
+                }
+        else:
+            self.plugin_configs = {
+                'enabled_plugins': [],
+                'plugin_settings': {}
+            }
+        
+        # 确保配置文件存在且格式正确
+        self._save_plugin_config()
+    
+    def _save_plugin_config(self):
+        """保存插件配置"""
+        config_file = self.plugins_dir / "plugin_config.json"
+        
+        try:
+            with open(config_file, 'w', encoding='utf-8') as f:
+                json.dump(self.plugin_configs, f, indent=2, ensure_ascii=False)
+            logger.debug("[PLUGIN] 💾 Plugin configurations saved")
+        except Exception as e:
+            logger.error(f"[PLUGIN] ❌ Failed to save plugin config: {e} - {traceback.format_exc()}")
