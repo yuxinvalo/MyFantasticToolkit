@@ -9,9 +9,9 @@
   },
   "ui_settings": {
     "theme": "light",
-    "font_size": 8,
+    "font_size": 11,
     "window_opacity": 1.0,
-    "language": "en_US"
+    "language": "zh_CN"
   },
   "startup_settings": {
     "auto_start": false,
