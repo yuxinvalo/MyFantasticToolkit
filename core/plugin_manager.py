@@ -62,11 +62,28 @@ class PluginManager(QObject):
                 plugin_info = self._get_plugin_info(plugin_dir)
                 if plugin_info:
                     available_plugins.append(plugin_info)
+                else:
+                    # 对于无效插件，创建一个错误信息条目
+                    error_plugin_info = {
+                        'name': plugin_dir.name,
+                        'display_name': plugin_dir.name,
+                        'version': 'Unknown',
+                        'author': 'Unknown',
+                        'description': tr('error.plugin_invalid'),
+                        'enabled': False,
+                        'loaded': False,
+                        'is_available': False,
+                        'error_info': tr('error.plugin_import_failed'),
+                        'path': str(plugin_dir),
+                        'has_local_config': (plugin_dir / "config.json").exists(),
+                    }
+                    available_plugins.append(error_plugin_info)
+                    logger.warning(f"[PLUGIN] ⚠️ Added error plugin info for: {plugin_dir.name}")
             
             logger.info(f"🔍 Discovered {len(available_plugins)} available plugins")
             
         except Exception as e:
-            logger.error(f"❌ Error discovering plugins: {e}")
+            logger.error(f"❌ Error discovering plugins: {e} - {traceback.format_exc()}")
         
         return available_plugins
     
@@ -390,6 +407,42 @@ class PluginManager(QObject):
         
         # 确保配置文件存在且格式正确
         self._save_plugin_config()
+    
+    def update_plugin_config(self, plugin_name: str, new_config: dict) -> bool:
+        """更新插件配置到config.json文件"""
+        try:
+            plugin_dir = self.plugins_dir / plugin_name
+            if not plugin_dir.exists():
+                logger.error(f"[PLUGIN] ❌ Plugin directory not found: {plugin_dir}")
+                return False
+            
+            config_file = plugin_dir / "config.json"
+            
+            # 读取现有配置文件
+            existing_config = {}
+            if config_file.exists():
+                try:
+                    with open(config_file, 'r', encoding='utf-8') as f:
+                        existing_config = json.load(f)
+                except Exception as e:
+                    logger.warning(f"[PLUGIN] ⚠️ Failed to read existing config for {plugin_name}: {e}")
+            
+            # 只更新available_config部分
+            if 'available_config' not in existing_config:
+                existing_config['available_config'] = {}
+            
+            existing_config['available_config'].update(new_config)
+            
+            # 保存更新后的配置到插件的config.json文件
+            with open(config_file, 'w', encoding='utf-8') as f:
+                json.dump(existing_config, f, indent=2, ensure_ascii=False)
+            
+            logger.info(f"[PLUGIN] 💾 Available config updated for plugin {plugin_name}: {new_config}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"[PLUGIN] ❌ Failed to update plugin config for {plugin_name}: {e} - {traceback.format_exc()}")
+            return False
     
     def _save_plugin_config(self):
         """保存插件配置"""

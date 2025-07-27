@@ -2,13 +2,16 @@
   "app_info": {
     "name": "HSBC Little Worker",
     "version": "1.0.0",
-    "organization": "HSBC Finance IT Support"
+    "organization": "HSBC Finance IT Support",
+    "author": "Tearsyu",
+    "description": "HSBC Little Worker 是一个基于 PySide6 开发的插件化工具平台，用于个人工作小工具集合。",
+    "license": "MIT"
   },
   "ui_settings": {
-    "theme": "light",
+    "theme": "dark",
     "font_size": 8,
     "window_opacity": 0.9,
-    "language": "zh_CN"
+    "language": "en_US"
   },
   "startup_settings": {
     "auto_start": false,

@@ -4,18 +4,155 @@ HSBC Little Worker - 插件管理器对话框
 """
 
 import os
+import traceback
+import json
 from typing import List, Dict, Any
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QWidget, QScrollArea,
     QPushButton, QLabel, QGroupBox, QTextEdit, QFrame, 
-    QMessageBox, QCheckBox, QSizePolicy
+    QMessageBox, QCheckBox, QSizePolicy, QLineEdit, QSpinBox, 
+    QComboBox, QFormLayout
 )
-from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QFont, QIcon, QPixmap
+from PySide6.QtCore import Qt, Signal, QSize, QEvent
+from PySide6.QtGui import QFont, QIcon, QPixmap, QKeySequence, QKeyEvent
 
 from utils.logger import logger
 from .i18n import tr
+
+
+class KeyboardShortcutWidget(QWidget):
+    """键盘快捷键输入控件"""
+    
+    def __init__(self, default_value=None, parent=None):
+        super().__init__(parent)
+        self.shortcut_text = str(default_value) if default_value else ""
+        self.is_recording = False
+        self._init_ui()
+    
+    def _init_ui(self):
+        """初始化UI"""
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(5)
+        
+        # 显示当前快捷键的标签
+        self.shortcut_label = QLabel(self.shortcut_text or tr("plugin_manager.keyboard_shortcut_placeholder"))
+        self.shortcut_label.setStyleSheet("""
+            QLabel {
+                padding: 6px;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                background-color: #f8f9fa;
+                font-size: 11px;
+            }
+        """)
+        layout.addWidget(self.shortcut_label, 1)
+        
+        # 录制按钮
+        self.record_button = QPushButton(tr("plugin_manager.keyboard_shortcut_set"))
+        self.record_button.setFixedWidth(60)
+        self.record_button.clicked.connect(self._toggle_recording)
+        layout.addWidget(self.record_button)
+        
+        # 清除按钮
+        self.clear_button = QPushButton(tr("plugin_manager.keyboard_shortcut_clear"))
+        self.clear_button.setFixedWidth(60)
+        self.clear_button.clicked.connect(self._clear_shortcut)
+        layout.addWidget(self.clear_button)
+    
+    def _toggle_recording(self):
+        """切换录制状态"""
+        if self.is_recording:
+            self._stop_recording()
+        else:
+            self._start_recording()
+    
+    def _start_recording(self):
+        """开始录制快捷键"""
+        self.is_recording = True
+        self.record_button.setText(tr("plugin_manager.keyboard_shortcut_stop"))
+        self.shortcut_label.setText(tr("plugin_manager.keyboard_shortcut_recording"))
+        self.shortcut_label.setStyleSheet("""
+            QLabel {
+                padding: 6px;
+                border: 2px solid #2196f3;
+                border-radius: 4px;
+                background-color: #e3f2fd;
+                font-size: 11px;
+                color: #1976d2;
+            }
+        """)
+        # 设置焦点以接收按键事件
+        self.setFocus()
+        self.grabKeyboard()
+    
+    def _stop_recording(self):
+        """停止录制快捷键"""
+        self.is_recording = False
+        self.record_button.setText(tr("plugin_manager.keyboard_shortcut_set"))
+        self.releaseKeyboard()
+        self._update_display()
+    
+    def _clear_shortcut(self):
+        """清除快捷键"""
+        self.shortcut_text = ""
+        self._update_display()
+    
+    def _update_display(self):
+        """更新显示"""
+        display_text = self.shortcut_text or tr("plugin_manager.keyboard_shortcut_placeholder")
+        self.shortcut_label.setText(display_text)
+        self.shortcut_label.setStyleSheet("""
+            QLabel {
+                padding: 6px;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                background-color: #f8f9fa;
+                font-size: 11px;
+            }
+        """)
+    
+    def keyPressEvent(self, event):
+        """处理按键事件"""
+        if not self.is_recording:
+            super().keyPressEvent(event)
+            return
+        
+        # 忽略单独的修饰键
+        if event.key() in (Qt.Key_Control, Qt.Key_Alt, Qt.Key_Shift, Qt.Key_Meta):
+            return
+        
+        # 构建快捷键字符串
+        modifiers = event.modifiers()
+        key_parts = []
+        
+        if modifiers & Qt.ControlModifier:
+            key_parts.append("Ctrl")
+        if modifiers & Qt.AltModifier:
+            key_parts.append("Alt")
+        if modifiers & Qt.ShiftModifier:
+            key_parts.append("Shift")
+        if modifiers & Qt.MetaModifier:
+            key_parts.append("Meta")
+        
+        # 获取按键名称
+        key_name = QKeySequence(event.key()).toString()
+        if key_name:
+            key_parts.append(key_name)
+        
+        if key_parts:
+            self.shortcut_text = "+".join(key_parts)
+            self._stop_recording()
+    
+    def get_shortcut(self):
+        """获取当前快捷键"""
+        return self.shortcut_text
+    
+    def set_shortcut(self, shortcut):
+        """设置快捷键"""
+        self.shortcut_text = str(shortcut) if shortcut else ""
+        self._update_display()
 
 
 class PluginItemWidget(QFrame):
@@ -25,6 +162,7 @@ class PluginItemWidget(QFrame):
     plugin_enabled_changed = Signal(str, bool)  # 插件启用状态变化信号
     plugin_load_requested = Signal(str)  # 插件加载请求信号
     plugin_unload_requested = Signal(str)  # 插件卸载请求信号
+    plugin_config_requested = Signal(str)  # 插件配置请求信号
     
     def __init__(self, plugin_data, parent=None):
         super().__init__(parent)
@@ -46,8 +184,8 @@ class PluginItemWidget(QFrame):
         
         # 主布局
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(10, 7, 10, 7)
-        main_layout.setSpacing(5)
+        main_layout.setContentsMargins(8, 6, 8, 6)
+        main_layout.setSpacing(3)
         
         # 顶部信息行
         top_layout = QHBoxLayout()
@@ -71,7 +209,6 @@ class PluginItemWidget(QFrame):
         # 可用状态显示（移到名称右边）
         self.available_label = QLabel()
         self.available_label.setStyleSheet("font-size: 10px; font-weight: bold;")
-        self._update_available_display()
         name_status_layout.addWidget(self.available_label)
         name_status_layout.addStretch()
         
@@ -103,16 +240,67 @@ class PluginItemWidget(QFrame):
         """)
         self._update_status_label()
         top_layout.addWidget(self.status_label)
+
+        # 配置按钮
+        self.config_button = QPushButton()
+        # self.config_button.setFixedSize(24, 24)
+        self.config_button.setToolTip(tr("plugin_manager.config_tooltip"))
+        
+        # 设置图标路径
+        self.config_icon_normal = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "plugin-config.png")
+        self.config_icon_hover = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "plugin-config-hovered.png")
+        
+        # 设置默认图标
+        if os.path.exists(self.config_icon_normal):
+            self.config_button.setIcon(QIcon(self.config_icon_normal))
+            self.config_button.setIconSize(QSize(16, 16))
+        
+        # 设置样式去掉边框
+        self.config_button.setStyleSheet("""
+            QPushButton {
+                border: none;
+                background: transparent;
+            }
+        """)
+        
+        self.config_button.clicked.connect(self._on_config_clicked)
+        
+        # Enabled 复选框和配置按钮的容器布局
+        enabled_config_layout = QHBoxLayout()
+        enabled_config_layout.setSpacing(0)  # 设置0间距让控件紧密相邻
+        enabled_config_layout.setContentsMargins(0, 0, 0, 0)
         
         # Enabled 复选框
         self.enabled_label = QLabel(tr("plugin_manager.enabled"))
         self.enabled_checkbox = QCheckBox()
         self.enabled_checkbox.toggled.connect(self._on_enabled_changed)
         self._update_enabled_switch()
-        top_layout.addWidget(self.enabled_label)
-        top_layout.addWidget(self.enabled_checkbox)
+        enabled_config_layout.addWidget(self.enabled_label)
+        enabled_config_layout.addWidget(self.enabled_checkbox)
+        
+        # 重写hover事件
+        def on_config_button_enter(event):
+            if os.path.exists(self.config_icon_hover):
+                self.config_button.setIcon(QIcon(self.config_icon_hover))
+            QPushButton.enterEvent(self.config_button, event)
+        
+        def on_config_button_leave(event):
+            if os.path.exists(self.config_icon_normal):
+                self.config_button.setIcon(QIcon(self.config_icon_normal))
+            QPushButton.leaveEvent(self.config_button, event)
+        
+        self.config_button.enterEvent = on_config_button_enter
+        self.config_button.leaveEvent = on_config_button_leave
+        
+        enabled_config_layout.addWidget(self.config_button)
+        
+        # 将enabled和配置按钮的布局添加到主布局
+        top_layout.addLayout(enabled_config_layout)
         
         main_layout.addLayout(top_layout)
+        
+        # 现在所有控件都创建完成，可以安全地更新状态
+        self._update_available_display()
         
         # 描述文本
         description = self.plugin_data.get('description', tr("plugin_manager.no_description"))
@@ -146,9 +334,12 @@ class PluginItemWidget(QFrame):
         if self.plugin_data.get('is_available', True):
             self.available_label.setText("✅ Available")
             self.available_label.setStyleSheet("font-size: 10px; font-weight: bold; color: #2E7D32;")
+            self.config_button.setEnabled(True)
         else:
             self.available_label.setText("❌ Unavailable")
+            self.available_label.setToolTip(self.plugin_data.get('error_info', ''))
             self.available_label.setStyleSheet("font-size: 10px; font-weight: bold; color: #C62828;")
+            self.config_button.setEnabled(False)
     
     def _update_enabled_switch(self):
         """更新启用开关"""
@@ -165,6 +356,11 @@ class PluginItemWidget(QFrame):
             self.plugin_load_requested.emit(self.plugin_name)
         else:
             self.plugin_unload_requested.emit(self.plugin_name)
+    
+    def _on_config_clicked(self):
+        """配置按钮点击处理"""
+        self.plugin_config_requested.emit(self.plugin_name)
+        logger.info(f"[PLUGIN] ⚙️ Config requested for plugin: {self.plugin_name}")
     
     def _apply_styles(self):
         """应用样式"""
@@ -217,6 +413,437 @@ class PluginItemWidget(QFrame):
             self.layout().addWidget(self.error_label)
 
 
+class PluginConfigDialog(QDialog):
+    """插件配置对话框"""
+    
+    def __init__(self, plugin_name, config_data, available_config, parent=None):
+        super().__init__(parent)
+        
+        self.plugin_name = plugin_name
+        self.config_data = config_data.copy() if config_data else {}
+        self.available_config = available_config or {}
+        self.config_widgets = {}  # 存储配置控件
+        
+        # 初始化UI
+        self._init_ui()
+        
+        # 加载配置值
+        self._load_config_values()
+        
+        logger.info(f"[PLUGIN_CONFIG] 🔧 Config dialog opened for plugin: {plugin_name}")
+    
+    def _init_ui(self):
+        """初始化用户界面"""
+        self.setWindowTitle(f"{tr('plugin_manager.config_title')} - {self.plugin_name}")
+        self.setMinimumSize(400, 300)
+        self.resize(500, 400)
+        
+        # 设置窗口图标
+        icon_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "icon.svg")
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
+        
+        # 创建主布局
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)
+        
+        # 创建标题
+        title_label = QLabel(f"{tr('plugin_manager.config_title')} - {self.plugin_name}")
+        title_font = QFont()
+        title_font.setPointSize(12)
+        title_font.setBold(True)
+        title_label.setFont(title_font)
+        title_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(title_label)
+        
+        # 创建滚动区域
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        
+        # 创建配置表单
+        config_widget = QWidget()
+        self.config_layout = QFormLayout(config_widget)
+        self.config_layout.setContentsMargins(10, 10, 10, 10)
+        self.config_layout.setSpacing(10)
+        
+        # 根据available_config动态创建控件
+        self._create_config_widgets()
+        
+        scroll_area.setWidget(config_widget)
+        main_layout.addWidget(scroll_area, 1)
+        
+        # 创建按钮区域
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        # 取消按钮
+        cancel_button = QPushButton(tr("plugin_manager.config_cancel"))
+        cancel_button.clicked.connect(self.reject)
+        button_layout.addWidget(cancel_button)
+        
+        # 保存按钮
+        save_button = QPushButton(tr("plugin_manager.config_save"))
+        save_button.clicked.connect(self._save_config)
+        save_button.setDefault(True)
+        button_layout.addWidget(save_button)
+        
+        main_layout.addLayout(button_layout)
+        
+        # 应用样式
+        self._apply_styles()
+    
+    def _create_config_widgets(self):
+        """根据available_config动态创建配置控件"""
+        if not self.available_config:
+            # 如果没有配置项，显示提示
+            no_config_label = QLabel(tr("plugin_manager.no_config_available"))
+            no_config_label.setAlignment(Qt.AlignCenter)
+            no_config_label.setStyleSheet("color: #666666; font-style: italic; padding: 20px;")
+            self.config_layout.addRow(no_config_label)
+            return
+        
+        for key, config_info in self.available_config.items():
+             widget = self._create_widget_for_config(key, config_info)
+             if widget:
+                 # 处理标签文本
+                 if isinstance(config_info, dict):
+                     label_text = config_info.get('label', key)
+                     description = config_info.get('description', '')
+                     if description:
+                         label_text += f" ({description})"
+                 else:
+                     label_text = key
+                 
+                 label = QLabel(label_text)
+                 self.config_layout.addRow(label, widget)
+                 self.config_widgets[key] = widget
+    
+    def _create_widget_for_config(self, key, config_info):
+        """为单个配置项创建控件"""
+        default_value = config_info
+        config_type = self._infer_config_type(key, default_value)
+        
+        try:
+            if config_type == 'bool':
+                if key == 'enabled':  # 特殊处理enabled配置项
+                    return
+                widget = QCheckBox()
+                if default_value is not None:
+                        widget.setChecked(bool(default_value))
+                return widget
+            
+            elif config_type == 'int':
+                widget = QSpinBox()
+                widget.setRange(-999999, 999999)
+                if isinstance(config_info, dict):
+                    widget.setRange(config_info.get('min', -999999), config_info.get('max', 999999))
+                if default_value is not None:
+                    widget.setValue(int(default_value))
+                return widget
+            
+            elif config_type == 'list' and len(default_value) > 0:
+                widget = QComboBox()
+                widget.setEditable(False)  # 禁止编辑，只能从列表中选择
+                
+                # 存储完整的选项列表（包括最后一个用于存储用户配置的选项）
+                full_options = []
+                if isinstance(config_info, dict) and 'options' in config_info:
+                    # 如果配置中定义了选项，使用这些选项
+                    full_options = config_info['options']
+                elif config_type == 'list' and isinstance(default_value, list):
+                    # 如果没有预定义选项，使用默认值作为选项
+                    full_options = default_value.copy()
+                
+                # 将完整选项列表存储在widget的属性中，用于后续保存
+                widget.setProperty('full_options', full_options)
+                
+                # 只显示除最后一个选项外的所有选项（最后一个选项用于存储用户配置，不显示）
+                display_options = full_options[:-1] if len(full_options) > 1 else full_options
+                widget.addItems([str(item) for item in display_options])
+                
+                if default_value is not None:
+                    if config_type == 'list' and isinstance(default_value, list) and default_value:
+                        # 查找当前选中值（最后一个元素是用户配置）
+                        current_value = str(default_value[-1]) if default_value else ''
+                        # 在显示的选项中查找
+                        index = widget.findText(current_value)
+                        if index >= 0:
+                            widget.setCurrentIndex(index)
+                        else:
+                            # 如果在显示选项中找不到，说明是用户自定义的值，选择第一个选项
+                            if widget.count() > 0:
+                                widget.setCurrentIndex(0)
+                    else:
+                        # 查找默认值在选项中的索引
+                        index = widget.findText(str(default_value))
+                        if index >= 0:
+                            widget.setCurrentIndex(index)
+                        
+                return widget
+            elif config_type == 'string':
+                widget = QLineEdit()
+                widget.setMaxLength(100)  # 最大长度为100
+                if default_value is not None:
+                    widget.setText(str(default_value))
+                return widget
+
+            elif config_type == 'keyboard':
+                widget = KeyboardShortcutWidget(default_value)
+                widget.setMaximumWidth(300)
+                return widget
+                
+        except Exception as e:
+            logger.error(f"[PLUGIN_CONFIG] ❌ Error creating widget for {key}: {e}")
+            # 出错时返回简单的文本框
+            widget = QLineEdit()
+            if default_value is not None:
+                widget.setText(str(default_value))
+            return widget
+     
+    def _infer_config_type(self, key, value):
+        """根据键名和值推断配置类型"""
+        if isinstance(value, bool):
+            return 'bool'
+        elif isinstance(value, int):
+            return 'int'
+        elif isinstance(value, list):
+            return 'list'
+        elif isinstance(value, str):
+            if key.lower().startswith('keyboard'):
+                return 'keyboard'
+            return 'string'
+        else:
+            return 'not support type'
+     
+    def _load_config_values(self):
+        """加载配置值到控件"""
+        for key, widget in self.config_widgets.items():
+            if key in self.config_data:
+                value = self.config_data[key]
+                self._set_widget_value(widget, value)
+     
+    def _set_widget_value(self, widget, value):
+        """设置控件值"""
+        try:
+            if isinstance(widget, KeyboardShortcutWidget):
+                widget.set_shortcut(value)
+            elif isinstance(widget, QLineEdit):
+                widget.setText(str(value) if value is not None else '')
+            elif isinstance(widget, QSpinBox):
+                widget.setValue(int(value) if value is not None else 0)
+            elif isinstance(widget, QCheckBox):
+                widget.setChecked(bool(value) if value is not None else False)
+            elif isinstance(widget, QComboBox):
+                if widget.isEditable():
+                    # 对于可编辑的下拉菜单，直接设置文本
+                    widget.setCurrentText(str(value) if value is not None else '')
+                else:
+                    # 对于不可编辑的下拉菜单，查找对应的索引
+                    index = widget.findData(value)
+                    if index >= 0:
+                        widget.setCurrentIndex(index)
+                    else:
+                        # 如果找不到数据，尝试按文本查找
+                        index = widget.findText(str(value))
+                        if index >= 0:
+                            widget.setCurrentIndex(index)
+        except Exception as e:
+            logger.error(f"[PLUGIN_CONFIG] ❌ Error setting widget value: {e}")
+    
+    def _get_widget_value(self, widget):
+        """获取控件值"""
+        try:
+            if isinstance(widget, KeyboardShortcutWidget):
+                return widget.get_shortcut()
+            elif isinstance(widget, QLineEdit):
+                text = widget.text().strip()
+                
+                # 检查是否是列表类型（通过占位符文本判断）
+                if widget.placeholderText() == "使用逗号分隔多个值":
+                    if not text:
+                        return []
+                    # 将逗号分隔的字符串转换为列表
+                    items = [item.strip() for item in text.split(',') if item.strip()]
+                    # 尝试转换为数字类型
+                    converted_items = []
+                    for item in items:
+                        try:
+                            # 尝试转换为整数
+                            if '.' not in item:
+                                converted_items.append(int(item))
+                            else:
+                                # 尝试转换为浮点数
+                                converted_items.append(float(item))
+                        except ValueError:
+                            # 保持为字符串
+                            converted_items.append(item)
+                    return converted_items
+                
+                return text if text else None
+            elif isinstance(widget, QSpinBox):
+                return widget.value()
+            elif isinstance(widget, QCheckBox):
+                return widget.isChecked()
+            elif isinstance(widget, QComboBox):
+                # 对于可编辑的下拉菜单，获取当前文本
+                if widget.isEditable():
+                    return widget.currentText()
+                else:
+                    # 检查是否是list类型的ComboBox（有full_options属性）
+                    full_options = widget.property('full_options')
+                    if full_options is not None:
+                        # 获取用户当前选择的值
+                        current_text = widget.currentText()
+                        # 重新构建列表，将用户选择的值放到最后
+                        new_list = full_options[:-1].copy()  # 复制除最后一个元素外的所有元素
+                        new_list.append(current_text)  # 将用户选择的值添加到最后
+                        return new_list
+                    else:
+                        # 对于普通的不可编辑下拉菜单，获取当前数据
+                        return widget.currentData() if widget.currentData() is not None else widget.currentText()
+            else:
+                return None
+        except Exception as e:
+            logger.error(f"[PLUGIN_CONFIG] ❌ Error getting widget value: {e}")
+            return None
+    
+    def _save_config(self):
+        """保存配置"""
+        try:
+            # 收集所有配置值
+            new_config = {}
+            for key, widget in self.config_widgets.items():
+                value = self._get_widget_value(widget)
+                if value is not None:
+                    new_config[key] = value
+            
+            # 验证配置值
+            if self._validate_config(new_config):
+                self.config_data = new_config
+                self.accept()
+                logger.info(f"[PLUGIN_CONFIG] 💾 Config saved for plugin: {self.plugin_name}")
+                logger.info(f"[PLUGIN_CONFIG] 🔄 Config saved: {new_config}")
+            
+        except Exception as e:
+            logger.error(f"[PLUGIN_CONFIG] ❌ Error saving config: {e}")
+            QMessageBox.warning(self, tr("plugin_manager.error"), str(e))
+     
+    def _validate_config(self, config):
+        """验证配置值"""
+        try:
+            for key, value in config.items():
+                if key in self.available_config:
+                    config_info = self.available_config[key]
+                    if isinstance(config_info, dict):
+                        config_type = config_info.get('type', 'string')
+                    else:
+                        config_type = self._infer_config_type(key, config_info)
+                    
+                    # 类型验证
+                    if config_type == 'int':
+                        try:
+                            int_value = int(value)
+                            min_val = config_info.get('min') if isinstance(config_info, dict) else None
+                            max_val = config_info.get('max') if isinstance(config_info, dict) else None
+                            if min_val is not None and int_value < min_val:
+                                raise ValueError(f"{key} config value must be greater than or equal to {min_val}")
+                            if max_val is not None and int_value > max_val:
+                                raise ValueError(f"{key} config value must be less than or equal to {max_val}")
+                        except ValueError as e:
+                            QMessageBox.warning(self, tr("plugin_manager.validation_error"), str(e))
+                            return False
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"[PLUGIN_CONFIG] ❌ Error validating config: {e}")
+            QMessageBox.warning(self, tr("plugin_manager.error"), str(e))
+            return False
+    
+    def _apply_styles(self):
+        """应用样式"""
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f8f9fa;
+            }
+            
+            QScrollArea {
+                border: none;
+                background-color: #ffffff;
+                border-radius: 4px;
+            }
+            
+            QLineEdit, QSpinBox, QComboBox {
+                padding: 6px;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                background-color: #ffffff;
+                font-size: 11px;
+            }
+            
+            QLineEdit:focus, QSpinBox:focus, QComboBox:focus {
+                border-color: #2196f3;
+                outline: none;
+            }
+            
+            QPushButton {
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                padding: 8px 16px;
+                font-size: 11px;
+                min-width: 80px;
+            }
+            
+            QPushButton:hover {
+                background-color: #e9ecef;
+                border-color: #adb5bd;
+            }
+            
+            QPushButton:pressed {
+                background-color: #dee2e6;
+            }
+            
+            QPushButton:default {
+                background-color: #2196f3;
+                color: white;
+                border-color: #2196f3;
+            }
+            
+            QPushButton:default:hover {
+                background-color: #1976d2;
+                border-color: #1976d2;
+            }
+            
+            QCheckBox {
+                font-size: 11px;
+            }
+            
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+                border-radius: 3px;
+                border: 1px solid #ccc;
+            }
+            
+            QCheckBox::indicator:checked {
+                background-color: #2196f3;
+                border-color: #2196f3;
+            }
+            
+            QLabel {
+                font-size: 11px;
+            }
+        """)
+    
+    def get_config_data(self):
+        """获取配置数据"""
+        return self.config_data.copy()
+
+
 class PluginManagerDialog(QDialog):
     """插件管理器对话框"""
     
@@ -247,8 +874,8 @@ class PluginManagerDialog(QDialog):
     def _init_ui(self):
         """初始化用户界面"""
         self.setWindowTitle(tr("plugin_manager.title"))
-        self.setMinimumSize(400, 400)
-        self.resize(400, 500)
+        self.setMinimumSize(500, 400)
+        self.resize(500, 500)
         
         # 设置窗口图标
         icon_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "icon.svg")
@@ -444,19 +1071,33 @@ class PluginManagerDialog(QDialog):
         for plugin_data in self.plugins_data:
             plugin_name = plugin_data['name']
             
-            # 创建插件项widget
-            plugin_widget = PluginItemWidget(plugin_data)
-            
-            # 连接信号
-            plugin_widget.plugin_enabled_changed.connect(self._on_plugin_enabled_changed)
-            plugin_widget.plugin_load_requested.connect(self._load_plugin)
-            plugin_widget.plugin_unload_requested.connect(self._unload_plugin)
-            
-            # 添加到布局中（在弹性空间之前）
-            self.plugin_list_layout.insertWidget(self.plugin_list_layout.count() - 1, plugin_widget)
-            
-            # 存储widget引用
-            self.plugin_widgets[plugin_name] = plugin_widget
+            try:
+                # 创建插件项widget
+                plugin_widget = PluginItemWidget(plugin_data)
+                
+                # 连接信号（检查信号是否存在）
+                if hasattr(plugin_widget, 'plugin_enabled_changed'):
+                    plugin_widget.plugin_enabled_changed.connect(self._on_plugin_enabled_changed)
+                if hasattr(plugin_widget, 'plugin_load_requested'):
+                    plugin_widget.plugin_load_requested.connect(self._load_plugin)
+                if hasattr(plugin_widget, 'plugin_unload_requested'):
+                    plugin_widget.plugin_unload_requested.connect(self._unload_plugin)
+                if hasattr(plugin_widget, 'plugin_config_requested'):
+                    plugin_widget.plugin_config_requested.connect(self._on_plugin_config_requested)
+                
+                # 添加到布局中（在弹性空间之前）
+                self.plugin_list_layout.insertWidget(self.plugin_list_layout.count() - 1, plugin_widget)
+                
+                # 存储widget引用
+                self.plugin_widgets[plugin_name] = plugin_widget
+                
+            except Exception as e:
+                logger.error(f"[PLUGIN_MANAGER] ❌ Failed to create widget for plugin {plugin_name}: {e} - {traceback.format_exc()}")
+                # 创建一个简单的错误显示widget
+                error_widget = QLabel(f"❌ 插件 '{plugin_name}' 显示错误: {str(e)}")
+                error_widget.setStyleSheet("color: red; padding: 10px; border: 1px solid red; border-radius: 4px; margin: 2px;")
+                self.plugin_list_layout.insertWidget(self.plugin_list_layout.count() - 1, error_widget)
+                continue
     
     def _connect_signals(self):
         """连接信号"""
@@ -521,6 +1162,53 @@ class PluginManagerDialog(QDialog):
             logger.error(f"[PLUGIN_MANAGER] ❌ Error unloading plugin: {e}")
             QMessageBox.warning(self, tr("plugin_manager.error"), str(e))
     
+    def _on_plugin_config_requested(self, plugin_name):
+        """处理插件配置请求"""
+        try:
+            # 查找插件数据
+            plugin_data = None
+            for plugin in self.plugins_data:
+                if plugin.get('name') == plugin_name:
+                    plugin_data = plugin
+                    break
+            
+            if not plugin_data:
+                QMessageBox.warning(
+                    self,
+                    tr("plugin_manager.error"),
+                    f"未找到插件 {plugin_name}"
+                )
+                return
+            
+            # 获取available_config
+            available_config = plugin_data.get('available_config', {})
+            current_config = plugin_data.get('config', {})
+            
+            # 创建配置对话框
+            config_dialog = PluginConfigDialog(
+                plugin_name=plugin_name,
+                config_data=current_config,
+                available_config=available_config,
+                parent=self
+            )
+            
+            # 显示对话框并处理结果
+            if config_dialog.exec() == QDialog.DialogCode.Accepted:
+                # 获取新的配置数据
+                new_config = config_dialog.get_config_data()
+                
+                # 更新插件配置
+                self._update_plugin_config(plugin_name, new_config)
+                
+                logger.info(f"[PLUGIN_MANAGER] 💾 Plugin {plugin_name} config updated")
+                
+                # 刷新插件列表显示
+                self._refresh_plugins()
+            
+        except Exception as e:
+            logger.error(f"[PLUGIN_MANAGER] ❌ Error opening config for {plugin_name}: {e} - {traceback.format_exc()}")
+            QMessageBox.warning(self, tr("plugin_manager.error"), str(e))
+    
     def _refresh_plugins(self):
         """刷新插件列表"""
         try:
@@ -543,6 +1231,34 @@ class PluginManagerDialog(QDialog):
                            tr("plugin_manager.plugin_error").format(name=plugin_name, error=error_message))
         self._refresh_plugins()
     
+    def _update_plugin_config(self, plugin_name, new_config):
+        """更新插件配置"""
+        try:
+            # 通过插件管理器更新配置到文件
+            if hasattr(self.plugin_manager, 'update_plugin_config'):
+                success = self.plugin_manager.update_plugin_config(plugin_name, new_config)
+                if not success:
+                    raise Exception(f"Failed to save config to {plugin_name}/config.json")
+            else:
+                # 如果插件管理器没有此方法，直接更新本地数据（但这不会持久化）
+                logger.warning(f"[PLUGIN_MANAGER] ⚠️ Plugin manager missing update_plugin_config method, config may not persist")
+                for plugin in self.plugins_data:
+                    if plugin.get('name') == plugin_name:
+                        plugin['config'] = new_config
+                        break
+            
+            # 同时更新本地数据以保持一致性
+            for plugin in self.plugins_data:
+                if plugin.get('name') == plugin_name:
+                    plugin['config'] = new_config
+                    break
+            
+            logger.info(f"[PLUGIN_MANAGER] 💾 Config updated for plugin: {plugin_name}")
+            
+        except Exception as e:
+            logger.error(f"[PLUGIN_MANAGER] ❌ Error updating plugin config: {e} - {traceback.format_exc()}")
+            raise
+    
     def refresh_plugin_list(self):
         """刷新插件列表"""
         try:
@@ -554,4 +1270,4 @@ class PluginManagerDialog(QDialog):
         except Exception as e:
             logger.error(f"[PLUGIN_MANAGER] ❌ Error refreshing plugin list: {e}")
             QMessageBox.warning(self, tr("plugin_manager.error"),
-                              f"刷新插件列表时出错: {str(e)}")
+                              tr("plugin_manager.refresh_error").format(error=str(e)))

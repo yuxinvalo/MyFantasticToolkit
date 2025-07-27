@@ -160,7 +160,7 @@ class LittleWorkerApp(QMainWindow):
         menubar = self.menuBar()
         
         # 文件菜单
-        file_menu = menubar.addMenu(tr("menu.file"))
+        file_menu = menubar.addMenu("📁" + tr("menu.file"))
         
         # 设置按钮
         settings_action = QAction(tr("menu.settings"), self)
@@ -175,19 +175,23 @@ class LittleWorkerApp(QMainWindow):
         file_menu.addAction(exit_action)
         
         # 插件菜单
-        plugin_menu = menubar.addMenu(tr("menu.plugins"))
+        plugin_menu = menubar.addMenu("🔌" + tr("menu.plugins"))
         
         # 插件管理动作
         plugin_manager_action = QAction(tr("menu.plugin_manager"), self)
+        # 设置插件管理器图标
+        icon_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "plugin_manager_icon.svg")
+        if os.path.exists(icon_path):
+            plugin_manager_action.setIcon(QIcon(icon_path))
         plugin_manager_action.triggered.connect(self._show_plugin_manager)
         plugin_menu.addAction(plugin_manager_action)
         
         # 语言菜单
-        language_menu = menubar.addMenu(tr("menu.language"))
+        language_menu = menubar.addMenu("🌐" + tr("menu.language"))
         self._create_language_menu(language_menu)
         
         # 帮助菜单
-        help_menu = menubar.addMenu(tr("menu.help"))
+        help_menu = menubar.addMenu("🐷" + tr("menu.help"))
         
         # 欢迎页动作
         welcome_action = QAction(tr("menu.welcome"), self)

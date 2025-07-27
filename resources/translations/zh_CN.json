@@ -86,6 +86,24 @@
   "plugin_manager.load_error_msg": "加载插件 {name} 失败",
   "plugin_manager.unload_error": "卸载插件 {name} 失败",
   "plugin_manager.plugin_error": "插件 {name} 发生错误: {error}",
+  "plugin_manager.refresh_error": "刷新插件列表失败: {error}",
+  "plugin_manager.config_tooltip": "配置插件",
+  "plugin_manager.config": "配置",
+  "plugin_manager.config_title": "插件配置",
+  "plugin_manager.config_save": "保存",
+  "plugin_manager.config_cancel": "取消",
+  "plugin_manager.config_reset": "重置",
+  "plugin_manager.no_config_available": "此插件没有可配置的选项",
+  "plugin_manager.validation_error": "配置验证错误",
+  "plugin_manager.no_plugins": "未找到任何插件",
+  "plugin_manager.plugin_loaded": "插件已加载",
+  "plugin_manager.plugin_not_loaded": "插件未加载",
+  "plugin_manager.refresh_tooltip": "刷新插件列表",
+  "plugin_manager.keyboard_shortcut_placeholder": "点击按钮设置快捷键",
+  "plugin_manager.keyboard_shortcut_set": "设置",
+  "plugin_manager.keyboard_shortcut_clear": "清除",
+  "plugin_manager.keyboard_shortcut_stop": "停止",
+  "plugin_manager.keyboard_shortcut_recording": "请按下快捷键组合...",
   
   "plugin.demo.name": "演示插件",
   "plugin.demo.description": "用于测试插件系统的演示插件",
@@ -166,5 +184,7 @@
   "error.config_save_failed": "配置文件保存失败",
   "error.file_not_found": "文件未找到",
   "error.permission_denied": "权限不足",
-  "error.unknown": "未知错误"
+  "error.unknown": "未知错误",
+  "error.plugin_invalid": "[ERROR] 插件无效或缺少Plugin类",
+  "error.plugin_import_failed": "插件没有有效的Plugin类或导入失败"
 }

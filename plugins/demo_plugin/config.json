@@ -7,13 +7,20 @@
     "author": "HSBC IT Support"
   },
   "available_config": {
-    "enabled": true
+    "enabled": true,
+    "bool test": true,
+    "str test": "testbac",
+    "int test": 123,
+    "list test": [
+      "1",
+      "2",
+      "3",
+      "2"
+    ],
+    "keyboard_1": "Alt+S",
+    "keyboard_2": "Ctrl+W"
   },
   "settings": {
-    "click_count": 6
-  },
-  "ui_settings": {
-    "show_logs": true,
-    "log_level": "info"
+    "click_count": 3
   }
 }

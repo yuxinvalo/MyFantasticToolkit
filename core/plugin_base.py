@@ -601,7 +601,7 @@ class PluginBase(QObject, ABC, metaclass=PluginMeta):
             'is_available': self.is_available,
             'error_info': self.error_info,
             'enabled': self.is_enabled(),
-            'config': self.get_available_config()
+            'available_config': self.get_available_config()
         }
 
 
