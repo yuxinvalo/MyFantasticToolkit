@@ -105,10 +105,59 @@ class LittleWorkerApp(QMainWindow):
                 QApplication.setFont(font)
                 logger.debug(f"[SETTINGS] 🔤 Font size applied: {font_size}")
                 
+                # 应用主题样式
+                theme = ui_settings.get("theme", "dark")
+                self._load_theme_styles(theme)
+                
                 logger.debug("[SETTINGS] ✅ UI settings loaded and applied")
                 
         except Exception as e:
             logger.error(f"[SETTINGS] ❌ Failed to load UI settings: {e} - {traceback.format_exc()}")   
+    
+    def _load_theme_styles(self, theme):
+        """加载主题样式文件"""
+        try:
+            from PySide6.QtWidgets import QApplication
+            
+            # 获取样式文件目录
+            styles_dir = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)), 
+                "core", 
+                "styles"
+            )
+            
+            # 构建样式文件路径
+            base_qss_path = os.path.join(styles_dir, "base.qss")
+            theme_qss_path = os.path.join(styles_dir, f"{theme}_theme.qss")
+            
+            # 加载基础样式
+            base_styles = ""
+            if os.path.exists(base_qss_path):
+                with open(base_qss_path, 'r', encoding='utf-8') as f:
+                    base_styles = f.read()
+                logger.debug(f"[THEME] 📄 Base styles loaded from: {base_qss_path}")
+            else:
+                logger.warning(f"[THEME] ⚠️ Base styles file not found: {base_qss_path}")
+            
+            # 加载主题样式
+            theme_styles = ""
+            if os.path.exists(theme_qss_path):
+                with open(theme_qss_path, 'r', encoding='utf-8') as f:
+                    theme_styles = f.read()
+                logger.debug(f"[THEME] 🎨 Theme styles loaded from: {theme_qss_path}")
+            else:
+                logger.warning(f"[THEME] ⚠️ Theme styles file not found: {theme_qss_path}")
+            
+            # 合并并应用样式
+            combined_styles = base_styles + "\n" + theme_styles
+            if combined_styles.strip():
+                QApplication.instance().setStyleSheet(combined_styles)
+                logger.info(f"[THEME] ✅ Theme '{theme}' applied successfully")
+            else:
+                logger.warning("[THEME] ⚠️ No styles to apply")
+                
+        except Exception as e:
+            logger.error(f"[THEME] ❌ Failed to load theme styles: {e} - {traceback.format_exc()}")
     
     def _get_app_name(self):
         """从配置文件获取应用名称"""
@@ -460,12 +509,17 @@ class LittleWorkerApp(QMainWindow):
     
     def _on_settings_changed(self):
         """设置变更时的处理"""
-        # 重新加载并应用UI设置
+        # 重新加载并应用UI设置（包括主题样式）
         self._load_ui_settings()
         
         # 重新创建菜单栏以更新语言
         self.menuBar().clear()
         self._create_menu_bar()
+        
+        # 通知主窗口刷新样式
+        if self.main_window:
+            self.main_window.update()
+        
         logger.debug("[ACTION] ⚙️ Settings change handled")
     
     def _show_welcome(self):

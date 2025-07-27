@@ -403,6 +403,7 @@ class Plugin(SimplePluginBase):  # 必须继承自 PluginBase 或其子类
     """插件主类，名称必须是 Plugin"""
     
     # 必须定义的元信息
+    NAME = "my_plugin"
     DISPLAY_NAME = "我的插件"
     DESCRIPTION = "插件描述"
     VERSION = "1.0.0"

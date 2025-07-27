@@ -72,7 +72,7 @@ class MainWindow(QWidget):
         title_font.setBold(True)
         self.title_label.setFont(title_font)
         self.title_label.setAlignment(Qt.AlignCenter)
-        self.title_label.setStyleSheet("border: none;")
+        self.title_label.setObjectName("welcome-title")
         layout.addWidget(self.title_label)
         
         # 副标题
@@ -81,7 +81,7 @@ class MainWindow(QWidget):
         subtitle_font.setPointSize(10)
         self.subtitle_label.setFont(subtitle_font)
         self.subtitle_label.setAlignment(Qt.AlignCenter)
-        self.subtitle_label.setStyleSheet("color: #666666; border: none;")
+        self.subtitle_label.setObjectName("welcome-subtitle")
         layout.addWidget(self.subtitle_label)
         
         return welcome_frame
@@ -120,7 +120,7 @@ class MainWindow(QWidget):
         
         # 标题
         self.plugin_list_title = QLabel(tr("plugins.available"))
-        self.plugin_list_title.setStyleSheet("border: none;")
+        self.plugin_list_title.setObjectName("plugin-list-title")
         title_font = QFont()
         title_font.setPointSize(10)
         title_font.setBold(True)
@@ -141,7 +141,7 @@ class MainWindow(QWidget):
         # 添加默认提示
         self.no_plugins_label = QLabel(tr("plugins.none_available"))
         self.no_plugins_label.setAlignment(Qt.AlignCenter)
-        self.no_plugins_label.setStyleSheet("color: #999999; padding: 20px;")
+        self.no_plugins_label.setObjectName("no-plugins-text")
         self.plugin_buttons_layout.addWidget(self.no_plugins_label)
         
         # 添加弹性空间
@@ -186,16 +186,7 @@ class MainWindow(QWidget):
         self.welcome_desc = QLabel(tr("welcome.description"))
         self.welcome_desc.setAlignment(Qt.AlignCenter)
         self.welcome_desc.setWordWrap(True)
-        self.welcome_desc.setStyleSheet(
-            "QLabel {"
-            "    color: #555555;"
-            "    line-height: 1.6;"
-            "    padding: 10px;"
-            "    background-color: #f8f9fa;"
-            "    border-radius: 8px;"
-            "    border: 1px solid #e9ecef;"
-            "}"
-        )
+        self.welcome_desc.setObjectName("welcome-description")
         layout.addWidget(self.welcome_desc)
         
         # 添加弹性空间
@@ -205,68 +196,8 @@ class MainWindow(QWidget):
     
     def _apply_styles(self):
         """应用样式"""
-        self.setStyleSheet("""
-            QMainWindow {
-                background-color: #ffffff;
-            }
-            
-            QFrame {
-                background-color: #ffffff;
-                border: 1px solid #e0e0e0;
-                border-radius: 6px;
-            }
-            
-            QTabWidget::pane {
-                border: 1px solid #c0c0c0;
-                background-color: #ffffff;
-            }
-            
-            QTabWidget::tab-bar {
-                alignment: left;
-            }
-            
-            QTabBar::tab {
-                background-color: #f0f0f0;
-                border: 1px solid #c0c0c0;
-                border-bottom-color: #c0c0c0;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
-                min-width: 80px;
-                padding: 8px 12px;
-                margin-right: 2px;
-            }
-            
-            QTabBar::tab:selected {
-                background-color: #ffffff;
-                border-bottom-color: #ffffff;
-            }
-            
-            QTabBar::tab:hover {
-                background-color: #e8e8e8;
-            }
-            
-            QPushButton {
-                background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
-                border-radius: 4px;
-                padding: 8px 16px;
-                font-size: 11px;
-            }
-            
-            QPushButton:hover {
-                background-color: #e9ecef;
-                border-color: #adb5bd;
-            }
-            
-            QPushButton:pressed {
-                background-color: #dee2e6;
-            }
-            
-            QScrollArea {
-                border: none;
-                background-color: transparent;
-            }
-        """)
+        # 样式现在由QSS文件统一管理
+        pass
     
     def add_plugin_button(self, plugin_name, plugin_display_name, plugin_description=""):
         """添加插件按钮"""
@@ -286,13 +217,7 @@ class MainWindow(QWidget):
         
         # 设置按钮样式
         button.setMinimumHeight(40)
-        button.setStyleSheet("""
-            QPushButton {
-                text-align: left;
-                padding-left: 12px;
-                font-weight: bold;
-            }
-        """)
+        button.setObjectName("plugin-button")
         
         # 存储插件按钮引用
         self.plugin_buttons[plugin_name] = button
@@ -364,7 +289,7 @@ class MainWindow(QWidget):
             if not self.plugin_buttons:
                 self.no_plugins_label = QLabel(tr("plugins.none_available"))
                 self.no_plugins_label.setAlignment(Qt.AlignCenter)
-                self.no_plugins_label.setStyleSheet("color: #999999; padding: 20px;")
+                self.no_plugins_label.setObjectName("no-plugins-text")
                 self.plugin_buttons_layout.insertWidget(
                      self.plugin_buttons_layout.count() - 1,
                      self.no_plugins_label
@@ -375,13 +300,7 @@ class MainWindow(QWidget):
         if plugin_name in self.plugin_buttons:
             button = self.plugin_buttons[plugin_name]
             button.setEnabled(True)
-            button.setStyleSheet("""
-                QPushButton {
-                    text-align: left;
-                    padding-left: 12px;
-                    font-weight: bold;
-                }
-            """)
+            button.setObjectName("plugin-button")
             logger.debug(f"[PLUGIN] ✅ Plugin button enabled: {plugin_name}")
     
     def disable_plugin_button(self, plugin_name):
@@ -389,15 +308,7 @@ class MainWindow(QWidget):
         if plugin_name in self.plugin_buttons:
             button = self.plugin_buttons[plugin_name]
             button.setEnabled(False)
-            button.setStyleSheet("""
-                QPushButton {
-                    text-align: left;
-                    padding-left: 12px;
-                    font-weight: bold;
-                    color: #999999;
-                    background-color: #f5f5f5;
-                }
-            """)
+            button.setObjectName("plugin-button-disabled")
             logger.debug(f"[PLUGIN] ❌ Plugin button disabled: {plugin_name}")
     
     def on_language_changed(self):

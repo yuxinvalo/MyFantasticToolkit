@@ -38,15 +38,7 @@ class KeyboardShortcutWidget(QWidget):
         
         # 显示当前快捷键的标签
         self.shortcut_label = QLabel(self.shortcut_text or tr("plugin_manager.keyboard_shortcut_placeholder"))
-        self.shortcut_label.setStyleSheet("""
-            QLabel {
-                padding: 6px;
-                border: 1px solid #dee2e6;
-                border-radius: 4px;
-                background-color: #f8f9fa;
-                font-size: 11px;
-            }
-        """)
+        self.shortcut_label.setObjectName("keyboard-shortcut-label")
         layout.addWidget(self.shortcut_label, 1)
         
         # 录制按钮
@@ -73,16 +65,7 @@ class KeyboardShortcutWidget(QWidget):
         self.is_recording = True
         self.record_button.setText(tr("plugin_manager.keyboard_shortcut_stop"))
         self.shortcut_label.setText(tr("plugin_manager.keyboard_shortcut_recording"))
-        self.shortcut_label.setStyleSheet("""
-            QLabel {
-                padding: 6px;
-                border: 2px solid #2196f3;
-                border-radius: 4px;
-                background-color: #e3f2fd;
-                font-size: 11px;
-                color: #1976d2;
-            }
-        """)
+        self.shortcut_label.setObjectName("keyboard-shortcut-label-recording")
         # 设置焦点以接收按键事件
         self.setFocus()
         self.grabKeyboard()
@@ -103,15 +86,7 @@ class KeyboardShortcutWidget(QWidget):
         """更新显示"""
         display_text = self.shortcut_text or tr("plugin_manager.keyboard_shortcut_placeholder")
         self.shortcut_label.setText(display_text)
-        self.shortcut_label.setStyleSheet("""
-            QLabel {
-                padding: 6px;
-                border: 1px solid #dee2e6;
-                border-radius: 4px;
-                background-color: #f8f9fa;
-                font-size: 11px;
-            }
-        """)
+        self.shortcut_label.setObjectName("keyboard-shortcut-label")
     
     def keyPressEvent(self, event):
         """处理按键事件"""
@@ -178,8 +153,7 @@ class PluginItemWidget(QFrame):
     
     def _init_ui(self):
         """初始化用户界面"""
-        self.setFrameStyle(QFrame.Box)
-        self.setLineWidth(1)
+        self.setFrameStyle(QFrame.NoFrame)
         self.setContentsMargins(0, 0, 0, 0)
         
         # 主布局
@@ -201,14 +175,14 @@ class PluginItemWidget(QFrame):
         
         self.name_label = QLabel(self.plugin_data.get('display_name', self.plugin_name))
         name_font = QFont()
-        name_font.setPointSize(11)
+        name_font.setPointSize(14)
         name_font.setBold(True)
         self.name_label.setFont(name_font)
         name_status_layout.addWidget(self.name_label)
         
         # 可用状态显示（移到名称右边）
         self.available_label = QLabel()
-        self.available_label.setStyleSheet("font-size: 10px; font-weight: bold;")
+        self.available_label.setObjectName("plugin-available-label")
         name_status_layout.addWidget(self.available_label)
         name_status_layout.addStretch()
         
@@ -221,25 +195,10 @@ class PluginItemWidget(QFrame):
         info_font = QFont()
         info_font.setPointSize(9)
         self.info_label.setFont(info_font)
-        self.info_label.setStyleSheet("color: #666666;")
+        self.info_label.setObjectName("plugin-info-label")
         name_version_layout.addWidget(self.info_label)
         
         top_layout.addLayout(name_version_layout, 1)
-        
-        # 状态标签
-        self.status_label = QLabel()
-        self.status_label.setAlignment(Qt.AlignCenter)
-        self.status_label.setFixedSize(80, 24)
-        self.status_label.setStyleSheet("""
-            QLabel {
-                border-radius: 12px;
-                padding: 2px 8px;
-                font-size: 9px;
-                font-weight: bold;
-            }
-        """)
-        self._update_status_label()
-        top_layout.addWidget(self.status_label)
 
         # 配置按钮
         self.config_button = QPushButton()
@@ -256,12 +215,7 @@ class PluginItemWidget(QFrame):
             self.config_button.setIconSize(QSize(16, 16))
         
         # 设置样式去掉边框
-        self.config_button.setStyleSheet("""
-            QPushButton {
-                border: none;
-                background: transparent;
-            }
-        """)
+        self.config_button.setObjectName("plugin-config-button")
         
         self.config_button.clicked.connect(self._on_config_clicked)
         
@@ -306,7 +260,7 @@ class PluginItemWidget(QFrame):
         description = self.plugin_data.get('description', tr("plugin_manager.no_description"))
         self.description_label = QLabel(description)
         self.description_label.setWordWrap(True)
-        self.description_label.setStyleSheet("color: #555555; font-size: 10px; line-height: 1.4;")
+        self.description_label.setObjectName("plugin-description-label")
         self.description_label.setMaximumHeight(40)
         main_layout.addWidget(self.description_label)
         
@@ -314,31 +268,21 @@ class PluginItemWidget(QFrame):
         if self.plugin_data.get('error_info'):
             self.error_label = QLabel(f"❌ {self.plugin_data['error_info']}")
             self.error_label.setWordWrap(True)
-            self.error_label.setStyleSheet("color: #d32f2f; font-size: 9px; background-color: #ffebee; padding: 4px; border-radius: 4px;")
+            self.error_label.setObjectName("plugin-error-label")
             main_layout.addWidget(self.error_label)
     
-    def _update_status_label(self):
-        """更新状态标签"""
-        if self.plugin_data.get('loaded', False):
-            self.status_label.setText(tr("plugin_manager.status.loaded"))
-            self.status_label.setStyleSheet(self.status_label.styleSheet() + "background-color: #4caf50; color: white;")
-        elif not self.plugin_data.get('is_available', True):
-            self.status_label.setText(tr("plugin_manager.status.error"))
-            self.status_label.setStyleSheet(self.status_label.styleSheet() + "background-color: #f44336; color: white;")
-        else:
-            self.status_label.setText(tr("plugin_manager.status.available"))
-            self.status_label.setStyleSheet(self.status_label.styleSheet() + "background-color: #2196f3; color: white;")
+
     
     def _update_available_display(self):
         """更新可用状态显示"""
         if self.plugin_data.get('is_available', True):
             self.available_label.setText("✅ Available")
-            self.available_label.setStyleSheet("font-size: 10px; font-weight: bold; color: #2E7D32;")
+            self.available_label.setObjectName("plugin-available-label-available")
             self.config_button.setEnabled(True)
         else:
             self.available_label.setText("❌ Unavailable")
             self.available_label.setToolTip(self.plugin_data.get('error_info', ''))
-            self.available_label.setStyleSheet("font-size: 10px; font-weight: bold; color: #C62828;")
+            self.available_label.setObjectName("plugin-available-label-unavailable")
             self.config_button.setEnabled(False)
     
     def _update_enabled_switch(self):
@@ -364,19 +308,7 @@ class PluginItemWidget(QFrame):
     
     def _apply_styles(self):
         """应用样式"""
-        self.setStyleSheet("""
-            PluginItemWidget {
-                background-color: #ffffff;
-                border: 1px solid #e0e0e0;
-                border-radius: 8px;
-                margin: 2px;
-            }
-            
-            PluginItemWidget:hover {
-                border-color: #2196f3;
-                background-color: #f8f9ff;
-            }
-        """)
+        self.setObjectName("plugin-item-widget")
     
     def update_plugin_data(self, plugin_data):
         """更新插件数据"""
@@ -398,9 +330,6 @@ class PluginItemWidget(QFrame):
         self._update_available_display()
         self._update_enabled_switch()
         
-        # 更新状态标签
-        self._update_status_label()
-        
         # 更新错误信息
         if hasattr(self, 'error_label'):
             self.error_label.setParent(None)
@@ -409,7 +338,7 @@ class PluginItemWidget(QFrame):
         if plugin_data.get('error_info'):
             self.error_label = QLabel(f"❌ {plugin_data['error_info']}")
             self.error_label.setWordWrap(True)
-            self.error_label.setStyleSheet("color: #d32f2f; font-size: 9px; background-color: #ffebee; padding: 4px; border-radius: 4px;")
+            self.error_label.setObjectName("plugin-error-label")
             self.layout().addWidget(self.error_label)
 
 
@@ -501,7 +430,7 @@ class PluginConfigDialog(QDialog):
             # 如果没有配置项，显示提示
             no_config_label = QLabel(tr("plugin_manager.no_config_available"))
             no_config_label.setAlignment(Qt.AlignCenter)
-            no_config_label.setStyleSheet("color: #666666; font-style: italic; padding: 20px;")
+            no_config_label.setObjectName("plugin-no-config-label")
             self.config_layout.addRow(no_config_label)
             return
         
@@ -765,79 +694,7 @@ class PluginConfigDialog(QDialog):
     
     def _apply_styles(self):
         """应用样式"""
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #f8f9fa;
-            }
-            
-            QScrollArea {
-                border: none;
-                background-color: #ffffff;
-                border-radius: 4px;
-            }
-            
-            QLineEdit, QSpinBox, QComboBox {
-                padding: 6px;
-                border: 1px solid #dee2e6;
-                border-radius: 4px;
-                background-color: #ffffff;
-                font-size: 11px;
-            }
-            
-            QLineEdit:focus, QSpinBox:focus, QComboBox:focus {
-                border-color: #2196f3;
-                outline: none;
-            }
-            
-            QPushButton {
-                background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
-                border-radius: 4px;
-                padding: 8px 16px;
-                font-size: 11px;
-                min-width: 80px;
-            }
-            
-            QPushButton:hover {
-                background-color: #e9ecef;
-                border-color: #adb5bd;
-            }
-            
-            QPushButton:pressed {
-                background-color: #dee2e6;
-            }
-            
-            QPushButton:default {
-                background-color: #2196f3;
-                color: white;
-                border-color: #2196f3;
-            }
-            
-            QPushButton:default:hover {
-                background-color: #1976d2;
-                border-color: #1976d2;
-            }
-            
-            QCheckBox {
-                font-size: 11px;
-            }
-            
-            QCheckBox::indicator {
-                width: 16px;
-                height: 16px;
-                border-radius: 3px;
-                border: 1px solid #ccc;
-            }
-            
-            QCheckBox::indicator:checked {
-                background-color: #2196f3;
-                border-color: #2196f3;
-            }
-            
-            QLabel {
-                font-size: 11px;
-            }
-        """)
+        self.setObjectName("plugin-config-dialog")
     
     def get_config_data(self):
         """获取配置数据"""
@@ -930,15 +787,6 @@ class PluginManagerDialog(QDialog):
         content_layout.setContentsMargins(0, 0, 0, 0)
         content_layout.setSpacing(0)
         
-        # 创建插件列表标题
-        list_title = QLabel(tr("plugin_manager.available_plugins"))
-        title_font = QFont()
-        title_font.setPointSize(10)
-        title_font.setBold(True)
-        list_title.setFont(title_font)
-        list_title.setStyleSheet("padding: 10px; background-color: #f5f5f5; border-bottom: 1px solid #e0e0e0;")
-        content_layout.addWidget(list_title)
-        
         # 创建滚动区域
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
@@ -981,50 +829,7 @@ class PluginManagerDialog(QDialog):
     
     def _apply_styles(self):
         """应用样式"""
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #f8f9fa;
-            }
-            
-            QScrollArea {
-                border: none;
-                background-color: #ffffff;
-            }
-            
-            QPushButton {
-                background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
-                border-radius: 4px;
-                padding: 8px 16px;
-                font-size: 11px;
-                min-width: 80px;
-            }
-            
-            QPushButton:hover {
-                background-color: #e9ecef;
-                border-color: #adb5bd;
-            }
-            
-            QPushButton:pressed {
-                background-color: #dee2e6;
-            }
-            
-            QCheckBox {
-                font-size: 10px;
-            }
-            
-            QCheckBox::indicator {
-                width: 16px;
-                height: 16px;
-                border-radius: 3px;
-                border: 1px solid #ccc;
-            }
-            
-            QCheckBox::indicator:checked {
-                background-color: #2196f3;
-                border-color: #2196f3;
-            }
-        """)
+        self.setObjectName("plugin-manager-dialog")
     
     def _load_plugins_data(self):
         """加载插件数据"""
@@ -1095,7 +900,7 @@ class PluginManagerDialog(QDialog):
                 logger.error(f"[PLUGIN_MANAGER] ❌ Failed to create widget for plugin {plugin_name}: {e} - {traceback.format_exc()}")
                 # 创建一个简单的错误显示widget
                 error_widget = QLabel(f"❌ 插件 '{plugin_name}' 显示错误: {str(e)}")
-                error_widget.setStyleSheet("color: red; padding: 10px; border: 1px solid red; border-radius: 4px; margin: 2px;")
+                error_widget.setObjectName("plugin-error-widget")
                 self.plugin_list_layout.insertWidget(self.plugin_list_layout.count() - 1, error_widget)
                 continue
     

@@ -302,3 +302,16 @@ dev-dependencies = [
 - ✅ **松耦合**：插件间通过事件系统通信
 - ✅ **配置灵活**：支持插件启用/禁用和参数配置
 - ✅ **维护简单**：核心框架和业务逻辑分离
+
+
+# NEXT STEP
+
+
+```
+core/
+└── styles/
+    ├── base.qss          # 基础样式
+    ├── light_theme.qss   # 浅色主题
+    ├── dark_theme.qss    # 深色主题
+    └── components.qss    # 组件样式
+```

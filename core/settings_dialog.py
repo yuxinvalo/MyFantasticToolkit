@@ -44,6 +44,7 @@ class SettingsDialog(QDialog):
         self.setWindowTitle(tr("settings.title"))
         self.setModal(True)
         self.setFixedSize(500, 400)
+        self.setObjectName("settings-dialog")
         
         # 创建主布局
         main_layout = QVBoxLayout(self)
@@ -52,6 +53,7 @@ class SettingsDialog(QDialog):
         
         # 创建标签页容器
         self.tab_widget = QTabWidget()
+        self.tab_widget.setObjectName("settings-tab-widget")
         main_layout.addWidget(self.tab_widget)
         
         # 创建各个设置页面
