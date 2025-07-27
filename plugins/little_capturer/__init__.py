@@ -50,23 +50,77 @@ class Plugin(PluginBase):
     def initialize(self) -> bool:
         """初始化插件"""
         try:
-            # self.log_info("[INIT] 🚀 Initialize LittleCapturer Plugin")
+            self.log_info("[INIT] 🚀 Initialize LittleCapturer Plugin")
             
             # 初始化全局热键管理器
-            # hotkey = self.get_setting('hotkey', 'Alt+Shift+A')
-            # self.hotkey_manager = GlobalHotkeyManager()
-            # self.hotkey_manager.register_hotkey(hotkey, self._start_capture)
+            from .utils.hotkey_manager import GlobalHotkeyManager
+            self.hotkey_manager = GlobalHotkeyManager()
             
-            # # 初始化截图窗口
-            # self.capture_window = CaptureWindow(self)
+            # 初始化截图窗口
+            from .utils.screenshot import CaptureWindow
+            self.capture_window = CaptureWindow()
+            self.capture_window.area_selected.connect(self._on_area_selected)
+            self.capture_window.capture_cancelled.connect(self._on_capture_cancelled)
             
-            # self.log_info(f"[INIT] ✅ Initialize LittleCapturer Plugin Success")
+            # 启动热键管理器
+            self.hotkey_manager.start()
+            
+            # 注册热键
+            hotkey = self.get_setting('keyboard_shortcut', 'Alt+Shift+Z')
+            self._register_hotkey(hotkey)
+            
+            self.log_info(f"[INIT] ✅ Initialize LittleCapturer Plugin Success")
             return True
             
         except Exception as e:
             import traceback
             self.log_error(f"[INIT] ❌ Initialize LittleCapturer Plugin Failed: {e} - {traceback.format_exc()}")
             return False
+    
+    def _register_hotkey(self, hotkey):
+        """注册全局热键"""
+        try:
+            if self.hotkey_manager:
+                success = self.hotkey_manager.register_hotkey(hotkey, self._on_hotkey_triggered)
+                if success:
+                    self.log_info(f"[HOTKEY] ✅ Registered hotkey: {hotkey}")
+                else:
+                    self.log_error(f"[HOTKEY] ❌ Failed to register hotkey: {hotkey}")
+        except Exception as e:
+            import traceback
+            self.log_error(f"[HOTKEY] ❌ Failed to register hotkey {hotkey}: {e} - {traceback.format_exc()}")
+    
+    def _on_hotkey_triggered(self):
+        """热键触发回调"""
+        self._start_capture()
+    
+    def _on_area_selected(self, rect):
+        """区域选择完成回调"""
+        try:
+            self.log_info(f"[CAPTURE] 📐 Area selected: {rect}")
+            
+            # 执行区域截图
+            from .utils.screenshot import ScreenCapture
+            screen_capture = ScreenCapture()
+            pixmap = screen_capture.capture_area(rect)
+            
+            if pixmap and not pixmap.isNull():
+                self.log_info(f"[CAPTURE] ✅ Screenshot captured successfully, size: {pixmap.size()}")
+                # TODO: 这里可以添加保存、编辑等功能
+                # 目前只是演示截图功能已经工作
+            else:
+                self.log_error("[CAPTURE] ❌ Failed to capture screenshot")
+                
+        except Exception as e:
+            import traceback
+            self.log_error(f"[CAPTURE] ❌ Failed to handle area selection: {e} - {traceback.format_exc()}")
+    
+    def _on_capture_cancelled(self):
+        """截图取消回调"""
+        try:
+            self.log_info("[CAPTURE] ❌ Capture cancelled")
+        except Exception as e:
+            self.log_error(f"[CAPTURE] ❌ Failed to handle capture cancellation: {e}")
     
     def create_widget(self) -> QWidget:
         """创建插件界面组件"""
@@ -234,9 +288,33 @@ class Plugin(PluginBase):
         """开始截图（热键回调）"""
         try:
             self.log_info("[CAPTURE] 🎯 Starting screenshot capture")
-            # TODO: 实现截图逻辑
-            # if self.capture_window:
-            #     self.capture_window.start_capture()
+            if hasattr(self, 'capture_window') and self.capture_window:
+                self.capture_window.show_capture_window()
+            else:
+                self.log_error("[CAPTURE] ❌ Capture window not initialized")
         except Exception as e:
             import traceback
             self.log_error(f"[CAPTURE] ❌ Failed to start capture: {e} - {traceback.format_exc()}")
+    
+    def cleanup(self):
+        """清理插件资源"""
+        try:
+            self.log_info("[CLEANUP] 🧹 Cleaning up LittleCapturer plugin")
+            
+            # 清理热键管理器
+            if hasattr(self, 'hotkey_manager') and self.hotkey_manager:
+                self.hotkey_manager.cleanup()
+                self.hotkey_manager = None
+                self.log_info("[CLEANUP] ✅ Hotkey manager cleaned up")
+            
+            # 清理截图窗口
+            if hasattr(self, 'capture_window') and self.capture_window:
+                self.capture_window.hide()
+                self.capture_window = None
+                self.log_info("[CLEANUP] ✅ Capture window cleaned up")
+            
+            self.log_info("[CLEANUP] ✅ LittleCapturer plugin cleanup completed")
+            
+        except Exception as e:
+            import traceback
+            self.log_error(f"[CLEANUP] ❌ Failed to cleanup plugin: {e} - {traceback.format_exc()}")

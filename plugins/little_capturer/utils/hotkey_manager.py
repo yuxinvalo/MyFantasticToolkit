@@ -1,301 +1,282 @@
 # -*- coding: utf-8 -*-
 """
 LittleCapturer - 全局热键管理模块
-提供全局热键注册和管理功能
+基于pynput库提供更可靠的全局热键注册和管理功能
 """
 
+import threading
+from typing import Callable, Dict, Optional, Set
+from pynput import keyboard
 from PySide6.QtCore import QObject, Signal
-from typing import Callable, Dict, Optional
 
 from utils.logger import logger
 
 
 class GlobalHotkeyManager(QObject):
-    """全局热键管理器"""
+    """基于pynput的全局热键管理器"""
     
-    # 信号定义
+    # 定义信号
     hotkey_triggered = Signal(str)  # 热键触发信号
-    hotkey_registered = Signal(str)  # 热键注册成功信号
-    hotkey_unregistered = Signal(str)  # 热键注销成功信号
     
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._registered_hotkeys: Dict[str, Callable] = {}
-        self._is_enabled = True
+    def __init__(self):
+        super().__init__()
+        self._hotkeys: Dict[str, Callable] = {}  # 热键字符串到回调函数的映射
+        self._listener: Optional[keyboard.GlobalHotKeys] = None
+        self._running = False
+        self._lock = threading.Lock()
         
-        logger.debug("[HOTKEY] ⌨️ GlobalHotkeyManager initialized")
+    def start(self):
+        """启动热键监听"""
+        try:
+            with self._lock:
+                if self._running:
+                    logger.warning("[HOTKEY] ⚠️ Hotkey manager is already running")
+                    return True
+                    
+                # 如果有已注册的热键，创建监听器
+                if self._hotkeys:
+                    self._create_listener()
+                    
+                self._running = True
+                logger.info("[HOTKEY] 🚀 Hotkey manager started")
+                return True
+                
+        except Exception as e:
+            import traceback
+            logger.error(f"[HOTKEY] ❌ Failed to start hotkey manager: {e} - {traceback.format_exc()}")
+            return False
+    
+    def stop(self):
+        """停止热键监听"""
+        try:
+            with self._lock:
+                if not self._running:
+                    return
+                    
+                self._running = False
+                
+                # 停止监听器
+                if self._listener:
+                    self._listener.stop()
+                    self._listener = None
+                    
+                logger.info("[HOTKEY] 🛑 Hotkey manager stopped")
+                
+        except Exception as e:
+            import traceback
+            logger.error(f"[HOTKEY] ❌ Failed to stop hotkey manager: {e} - {traceback.format_exc()}")
     
     def register_hotkey(self, hotkey: str, callback: Callable) -> bool:
-        """注册全局热键
+        """注册热键
         
         Args:
-            hotkey: 热键组合字符串 (例如: "Alt+Shift+A")
+            hotkey: 热键字符串，如 'alt+shift+z', 'ctrl+c' 等
             callback: 热键触发时的回调函数
             
         Returns:
             bool: 注册是否成功
         """
         try:
-            if not hotkey or not callback:
-                logger.warning("[HOTKEY] ⚠️ Invalid hotkey or callback")
+            # 标准化热键字符串
+            normalized_hotkey = self._normalize_hotkey(hotkey)
+            if not normalized_hotkey:
+                logger.error(f"[HOTKEY] ❌ Invalid hotkey format: {hotkey}")
                 return False
             
-            if hotkey in self._registered_hotkeys:
-                logger.warning(f"[HOTKEY] ⚠️ Hotkey already registered: {hotkey}")
-                return False
-            
-            logger.info(f"[HOTKEY] 📝 Registering hotkey: {hotkey}")
-            
-            # TODO: 实现系统级热键注册
-            # Windows: 使用 RegisterHotKey API
-            # Linux: 使用 X11 或其他方式
-            # macOS: 使用 Carbon 或其他方式
-            
-            # 解析热键字符串
-            parsed_hotkey = self._parse_hotkey(hotkey)
-            if not parsed_hotkey:
-                logger.error(f"[HOTKEY] ❌ Failed to parse hotkey: {hotkey}")
-                return False
-            
-            # 注册到系统
-            success = self._register_system_hotkey(parsed_hotkey)
-            if success:
-                self._registered_hotkeys[hotkey] = callback
-                self.hotkey_registered.emit(hotkey)
-                logger.info(f"[HOTKEY] ✅ Hotkey registered successfully: {hotkey}")
+            with self._lock:
+                # 检查是否已经注册
+                if normalized_hotkey in self._hotkeys:
+                    logger.warning(f"[HOTKEY] ⚠️ Hotkey already registered: {normalized_hotkey}")
+                    return False
+                
+                # 添加到热键映射
+                self._hotkeys[normalized_hotkey] = callback
+                
+                # 如果管理器正在运行，重新创建监听器
+                if self._running:
+                    self._recreate_listener()
+                
+                logger.info(f"[HOTKEY] ✅ Hotkey registered: {normalized_hotkey}")
                 return True
-            else:
-                logger.error(f"[HOTKEY] ❌ Failed to register system hotkey: {hotkey}")
-                return False
-            
+                
         except Exception as e:
             import traceback
             logger.error(f"[HOTKEY] ❌ Failed to register hotkey {hotkey}: {e} - {traceback.format_exc()}")
             return False
     
     def unregister_hotkey(self, hotkey: str) -> bool:
-        """注销全局热键
+        """注销热键
         
         Args:
-            hotkey: 要注销的热键组合字符串
+            hotkey: 要注销的热键字符串
             
         Returns:
             bool: 注销是否成功
         """
         try:
-            if hotkey not in self._registered_hotkeys:
-                logger.warning(f"[HOTKEY] ⚠️ Hotkey not registered: {hotkey}")
+            normalized_hotkey = self._normalize_hotkey(hotkey)
+            if not normalized_hotkey:
+                logger.error(f"[HOTKEY] ❌ Invalid hotkey format: {hotkey}")
                 return False
             
-            logger.info(f"[HOTKEY] 🗑️ Unregistering hotkey: {hotkey}")
-            
-            # TODO: 实现系统级热键注销
-            
-            # 解析热键字符串
-            parsed_hotkey = self._parse_hotkey(hotkey)
-            if not parsed_hotkey:
-                logger.error(f"[HOTKEY] ❌ Failed to parse hotkey for unregistration: {hotkey}")
-                return False
-            
-            # 从系统注销
-            success = self._unregister_system_hotkey(parsed_hotkey)
-            if success:
-                del self._registered_hotkeys[hotkey]
-                self.hotkey_unregistered.emit(hotkey)
-                logger.info(f"[HOTKEY] ✅ Hotkey unregistered successfully: {hotkey}")
+            with self._lock:
+                if normalized_hotkey not in self._hotkeys:
+                    logger.warning(f"[HOTKEY] ⚠️ Hotkey not found: {normalized_hotkey}")
+                    return False
+                
+                # 从热键映射中移除
+                del self._hotkeys[normalized_hotkey]
+                
+                # 如果管理器正在运行，重新创建监听器
+                if self._running:
+                    self._recreate_listener()
+                
+                logger.info(f"[HOTKEY] ✅ Hotkey unregistered: {normalized_hotkey}")
                 return True
-            else:
-                logger.error(f"[HOTKEY] ❌ Failed to unregister system hotkey: {hotkey}")
-                return False
-            
+                
         except Exception as e:
             import traceback
             logger.error(f"[HOTKEY] ❌ Failed to unregister hotkey {hotkey}: {e} - {traceback.format_exc()}")
             return False
     
-    def unregister_all_hotkeys(self):
-        """注销所有已注册的热键"""
-        try:
-            logger.info("[HOTKEY] 🧹 Unregistering all hotkeys")
-            
-            hotkeys_to_remove = list(self._registered_hotkeys.keys())
-            for hotkey in hotkeys_to_remove:
-                self.unregister_hotkey(hotkey)
-            
-            logger.info("[HOTKEY] ✅ All hotkeys unregistered")
-            
-        except Exception as e:
-            import traceback
-            logger.error(f"[HOTKEY] ❌ Failed to unregister all hotkeys: {e} - {traceback.format_exc()}")
-    
-    def set_enabled(self, enabled: bool):
-        """设置热键管理器启用状态
+    def _normalize_hotkey(self, hotkey: str) -> Optional[str]:
+        """标准化热键字符串
         
-        Args:
-            enabled: 是否启用
+        将用户输入的热键字符串转换为pynput可识别的格式
+        例如: 'Alt+Shift+Z' -> '<alt>+<shift>+z'
         """
         try:
-            if self._is_enabled == enabled:
-                return
-            
-            self._is_enabled = enabled
-            status = "enabled" if enabled else "disabled"
-            logger.info(f"[HOTKEY] 🔄 Hotkey manager {status}")
-            
-            # TODO: 实现启用/禁用逻辑
-            
-        except Exception as e:
-            import traceback
-            logger.error(f"[HOTKEY] ❌ Failed to set enabled state: {e} - {traceback.format_exc()}")
-    
-    def is_enabled(self) -> bool:
-        """检查热键管理器是否启用
-        
-        Returns:
-            bool: 是否启用
-        """
-        return self._is_enabled
-    
-    def get_registered_hotkeys(self) -> list:
-        """获取已注册的热键列表
-        
-        Returns:
-            list: 已注册的热键列表
-        """
-        return list(self._registered_hotkeys.keys())
-    
-    def _parse_hotkey(self, hotkey: str) -> Optional[dict]:
-        """解析热键字符串
-        
-        Args:
-            hotkey: 热键字符串 (例如: "Alt+Shift+A")
-            
-        Returns:
-            dict: 解析后的热键信息，失败返回None
-        """
-        try:
-            if not hotkey:
+            if not hotkey or not isinstance(hotkey, str):
                 return None
             
-            # TODO: 实现热键字符串解析
-            # 1. 分割修饰键和主键
-            # 2. 转换为系统识别的键码
-            # 3. 返回解析结果
-            
-            parts = hotkey.split('+')
-            if not parts:
+            # 分割并清理各部分
+            parts = [part.strip().lower() for part in hotkey.split('+')]
+            if len(parts) < 2:
                 return None
             
-            modifiers = []
-            key = None
-            
-            for part in parts:
-                part = part.strip()
-                if part.lower() in ['ctrl', 'control']:
-                    modifiers.append('ctrl')
-                elif part.lower() in ['alt']:
-                    modifiers.append('alt')
-                elif part.lower() in ['shift']:
-                    modifiers.append('shift')
-                elif part.lower() in ['win', 'windows', 'cmd', 'meta']:
-                    modifiers.append('win')
-                else:
-                    key = part.upper()
-            
-            if not key:
-                return None
-            
-            return {
-                'modifiers': modifiers,
-                'key': key,
-                'original': hotkey
+            # 修饰键映射
+            modifier_map = {
+                'ctrl': '<ctrl>',
+                'control': '<ctrl>',
+                'alt': '<alt>',
+                'shift': '<shift>',
+                'win': '<cmd>',
+                'cmd': '<cmd>',
+                'super': '<cmd>'
             }
             
+            # 特殊键映射
+            special_key_map = {
+                'space': '<space>',
+                'enter': '<enter>',
+                'return': '<enter>',
+                'tab': '<tab>',
+                'esc': '<esc>',
+                'escape': '<esc>',
+                'backspace': '<backspace>',
+                'delete': '<delete>',
+                'del': '<delete>',
+                'insert': '<insert>',
+                'home': '<home>',
+                'end': '<end>',
+                'pageup': '<page_up>',
+                'pagedown': '<page_down>',
+                'up': '<up>',
+                'down': '<down>',
+                'left': '<left>',
+                'right': '<right>'
+            }
+            
+            # 处理功能键
+            for i in range(1, 13):
+                special_key_map[f'f{i}'] = f'<f{i}>'
+            
+            normalized_parts = []
+            
+            for part in parts:
+                if part in modifier_map:
+                    normalized_parts.append(modifier_map[part])
+                elif part in special_key_map:
+                    normalized_parts.append(special_key_map[part])
+                elif len(part) == 1 and part.isalnum():
+                    # 单个字母或数字
+                    normalized_parts.append(part.lower())
+                else:
+                    logger.warning(f"[HOTKEY] ⚠️ Unknown key part: {part}")
+                    return None
+            
+            return '+'.join(normalized_parts)
+            
         except Exception as e:
             import traceback
-            logger.error(f"[HOTKEY] ❌ Failed to parse hotkey {hotkey}: {e} - {traceback.format_exc()}")
+            logger.error(f"[HOTKEY] ❌ Failed to normalize hotkey {hotkey}: {e} - {traceback.format_exc()}")
             return None
     
-    def _register_system_hotkey(self, parsed_hotkey: dict) -> bool:
-        """注册系统级热键
-        
-        Args:
-            parsed_hotkey: 解析后的热键信息
-            
-        Returns:
-            bool: 注册是否成功
-        """
+    def _create_listener(self):
+        """创建热键监听器"""
         try:
-            # TODO: 实现平台特定的热键注册
-            # Windows: 使用 ctypes 调用 RegisterHotKey
-            # Linux: 使用 python-xlib 或其他库
-            # macOS: 使用 PyObjC 或其他库
-            
-            logger.debug(f"[HOTKEY] 🔧 Registering system hotkey: {parsed_hotkey}")
-            
-            # 临时返回True，实际实现时需要调用系统API
-            return True
-            
-        except Exception as e:
-            import traceback
-            logger.error(f"[HOTKEY] ❌ Failed to register system hotkey: {e} - {traceback.format_exc()}")
-            return False
-    
-    def _unregister_system_hotkey(self, parsed_hotkey: dict) -> bool:
-        """注销系统级热键
-        
-        Args:
-            parsed_hotkey: 解析后的热键信息
-            
-        Returns:
-            bool: 注销是否成功
-        """
-        try:
-            # TODO: 实现平台特定的热键注销
-            
-            logger.debug(f"[HOTKEY] 🔧 Unregistering system hotkey: {parsed_hotkey}")
-            
-            # 临时返回True，实际实现时需要调用系统API
-            return True
-            
-        except Exception as e:
-            import traceback
-            logger.error(f"[HOTKEY] ❌ Failed to unregister system hotkey: {e} - {traceback.format_exc()}")
-            return False
-    
-    def _on_hotkey_triggered(self, hotkey: str):
-        """热键触发回调
-        
-        Args:
-            hotkey: 触发的热键字符串
-        """
-        try:
-            if not self._is_enabled:
+            if not self._hotkeys:
                 return
             
-            if hotkey in self._registered_hotkeys:
-                callback = self._registered_hotkeys[hotkey]
-                logger.info(f"[HOTKEY] 🎯 Hotkey triggered: {hotkey}")
-                
-                # 发射信号
-                self.hotkey_triggered.emit(hotkey)
-                
-                # 调用回调函数
-                if callback:
-                    callback()
+            # 创建热键映射，将回调包装为触发信号的函数
+            hotkey_map = {}
+            for hotkey_str, callback in self._hotkeys.items():
+                hotkey_map[hotkey_str] = lambda h=hotkey_str, c=callback: self._on_hotkey_triggered(h, c)
+            
+            # 创建全局热键监听器
+            self._listener = keyboard.GlobalHotKeys(hotkey_map)
+            self._listener.start()
+            
+            logger.info(f"[HOTKEY] 🎧 Listener created with {len(hotkey_map)} hotkeys")
+            
+        except Exception as e:
+            import traceback
+            logger.error(f"[HOTKEY] ❌ Failed to create listener: {e} - {traceback.format_exc()}")
+    
+    def _recreate_listener(self):
+        """重新创建监听器"""
+        try:
+            # 停止现有监听器
+            if self._listener:
+                self._listener.stop()
+                self._listener = None
+            
+            # 创建新监听器
+            self._create_listener()
+            
+        except Exception as e:
+            import traceback
+            logger.error(f"[HOTKEY] ❌ Failed to recreate listener: {e} - {traceback.format_exc()}")
+    
+    def _on_hotkey_triggered(self, hotkey_str: str, callback: Callable):
+        """热键触发处理"""
+        try:
+            logger.info(f"[HOTKEY] 🎯 Hotkey triggered: {hotkey_str}")
+            
+            # 发射信号
+            self.hotkey_triggered.emit(hotkey_str)
+            
+            # 执行回调
+            if callable(callback):
+                callback()
             else:
-                logger.warning(f"[HOTKEY] ⚠️ Unknown hotkey triggered: {hotkey}")
+                logger.warning(f"[HOTKEY] ⚠️ Invalid callback for hotkey: {hotkey_str}")
                 
         except Exception as e:
             import traceback
             logger.error(f"[HOTKEY] ❌ Error handling hotkey trigger: {e} - {traceback.format_exc()}")
     
+    def get_registered_hotkeys(self) -> Dict[str, Callable]:
+        """获取已注册的热键列表"""
+        with self._lock:
+            return self._hotkeys.copy()
+    
+    def is_running(self) -> bool:
+        """检查管理器是否正在运行"""
+        return self._running
+    
     def cleanup(self):
         """清理资源"""
-        try:
-            logger.info("[HOTKEY] 🧹 Cleaning up hotkey manager")
-            self.unregister_all_hotkeys()
-            
-        except Exception as e:
-            import traceback
-            logger.error(f"[HOTKEY] ❌ Failed to cleanup: {e} - {traceback.format_exc()}")
+        self.stop()
+        with self._lock:
+            self._hotkeys.clear()
