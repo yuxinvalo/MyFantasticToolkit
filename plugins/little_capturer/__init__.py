@@ -56,6 +56,9 @@ class Plugin(PluginBase):
             from .utils.hotkey_manager import GlobalHotkeyManager
             self.hotkey_manager = GlobalHotkeyManager()
             
+            # 连接热键管理器信号
+            self.hotkey_manager.hotkey_triggered.connect(self._on_hotkey_signal_received)
+            
             # 初始化截图窗口
             from .utils.screenshot import CaptureWindow
             self.capture_window = CaptureWindow()
@@ -90,9 +93,25 @@ class Plugin(PluginBase):
             import traceback
             self.log_error(f"[HOTKEY] ❌ Failed to register hotkey {hotkey}: {e} - {traceback.format_exc()}")
     
+    def _on_hotkey_signal_received(self, hotkey_str: str):
+        """热键信号接收处理（在主线程中执行）"""
+        try:
+            self.log_info(f"[HOTKEY] 📡 Received hotkey signal in main thread: {hotkey_str}")
+            # 执行待处理的回调函数
+            if self.hotkey_manager:
+                self.hotkey_manager.execute_pending_callback()
+        except Exception as e:
+            import traceback
+            self.log_error(f"[HOTKEY] ❌ Error handling hotkey signal: {e} - {traceback.format_exc()}")
+    
     def _on_hotkey_triggered(self):
         """热键触发回调"""
-        self._start_capture()
+        try:
+            self.log_info("[HOTKEY] 🔥 Hotkey triggered, calling _start_capture")
+            self._start_capture()
+        except Exception as e:
+            import traceback
+            self.log_error(f"[HOTKEY] ❌ Error in hotkey callback: {e} - {traceback.format_exc()}")
     
     def _on_area_selected(self, rect):
         """区域选择完成回调"""

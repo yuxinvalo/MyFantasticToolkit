@@ -101,7 +101,7 @@ class ScreenCapture(QObject):
             
             if not area_pixmap.isNull():
                 self.capture_completed.emit(area_pixmap, rect)
-                logger.info("[SCREENSHOT] ✅ Area capture completed")
+                logger.debug ("[SCREENSHOT] ✅ Area capture completed")
             
             return area_pixmap
             
@@ -246,15 +246,33 @@ class CaptureWindow(QWidget):
         try:
             logger.info("[SCREENSHOT] 👁️ Showing capture window")
             
+            # 重置选择状态
+            self._selecting = False
+            self._selection_rect = QRect()
+            self._start_point = QPoint()
+            self._end_point = QPoint()
+            
             # 获取屏幕截图作为背景
             screen = QApplication.primaryScreen()
             if screen:
                 self._background_pixmap = screen.grabWindow(0)
                 logger.debug("[SCREENSHOT] 📸 Background screenshot captured")
+            else:
+                logger.error("[SCREENSHOT] ❌ No primary screen found")
+                return
             
-            # 重置选择区域
-            self._selection_rect = QRect()
-            self._start_point = QPoint()
+            # 使用QTimer延迟显示，避免阻塞
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(10, self._do_show_window)
+            
+        except Exception as e:
+            import traceback
+            logger.error(f"[SCREENSHOT] ❌ Failed to show capture window: {e} - {traceback.format_exc()}")
+    
+    def _do_show_window(self):
+        """实际显示窗口的方法"""
+        try:
+            logger.debug("[SCREENSHOT] 🎪 Actually showing capture window")
             
             # 显示窗口
             self.show()
@@ -266,9 +284,11 @@ class CaptureWindow(QWidget):
             # 确保窗口在最顶层
             self.setWindowState(Qt.WindowState.WindowFullScreen)
             
+            logger.debug("[SCREENSHOT] ✅ Capture window displayed successfully")
+            
         except Exception as e:
             import traceback
-            logger.error(f"[SCREENSHOT] ❌ Failed to show capture window: {e} - {traceback.format_exc()}")
+            logger.error(f"[SCREENSHOT] ❌ Failed to actually show window: {e} - {traceback.format_exc()}")
     
     def hide_capture_window(self):
         """隐藏截图选择窗口"""
@@ -328,7 +348,7 @@ class CaptureWindow(QWidget):
                     abs(self._end_point.y() - self._start_point.y())
                 )
                 
-                logger.info(f"[SCREENSHOT] ✅ Area selected: {self._selection_rect}")
+                logger.debug(f"[SCREENSHOT] ✅ Area selected: {self._selection_rect}")
                 
                 # 如果选择区域有效，发射信号
                 if self._selection_rect.width() > 5 and self._selection_rect.height() > 5:

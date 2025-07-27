@@ -24,6 +24,7 @@ class GlobalHotkeyManager(QObject):
         self._listener: Optional[keyboard.GlobalHotKeys] = None
         self._running = False
         self._lock = threading.Lock()
+        self._pending_callback: Optional[Callable] = None  # 待执行的回调函数
         
     def start(self):
         """启动热键监听"""
@@ -221,7 +222,8 @@ class GlobalHotkeyManager(QObject):
             # 创建热键映射，将回调包装为触发信号的函数
             hotkey_map = {}
             for hotkey_str, callback in self._hotkeys.items():
-                hotkey_map[hotkey_str] = lambda h=hotkey_str, c=callback: self._on_hotkey_triggered(h, c)
+                # 修复闭包问题：使用函数工厂创建独立的回调函数
+                hotkey_map[hotkey_str] = self._create_hotkey_callback(hotkey_str, callback)
             
             # 创建全局热键监听器
             self._listener = keyboard.GlobalHotKeys(hotkey_map)
@@ -232,6 +234,22 @@ class GlobalHotkeyManager(QObject):
         except Exception as e:
             import traceback
             logger.error(f"[HOTKEY] ❌ Failed to create listener: {e} - {traceback.format_exc()}")
+    
+    def _create_hotkey_callback(self, hotkey_str: str, callback: Callable) -> Callable:
+        """创建热键回调函数工厂
+        
+        解决lambda闭包问题，确保每个热键都有独立的回调函数
+        
+        Args:
+            hotkey_str: 热键字符串
+            callback: 原始回调函数
+            
+        Returns:
+            Callable: 独立的回调函数
+        """
+        def hotkey_callback():
+            self._on_hotkey_triggered(hotkey_str, callback)
+        return hotkey_callback
     
     def _recreate_listener(self):
         """重新创建监听器"""
@@ -253,18 +271,30 @@ class GlobalHotkeyManager(QObject):
         try:
             logger.info(f"[HOTKEY] 🎯 Hotkey triggered: {hotkey_str}")
             
-            # 发射信号
-            self.hotkey_triggered.emit(hotkey_str)
+            # 存储回调函数以便在主线程中执行
+            self._pending_callback = callback
             
-            # 执行回调
-            if callable(callback):
-                callback()
-            else:
-                logger.warning(f"[HOTKEY] ⚠️ Invalid callback for hotkey: {hotkey_str}")
+            # 发射信号，让主线程处理
+            self.hotkey_triggered.emit(hotkey_str)
                 
         except Exception as e:
             import traceback
             logger.error(f"[HOTKEY] ❌ Error handling hotkey trigger: {e} - {traceback.format_exc()}")
+    
+    def execute_pending_callback(self):
+        """在主线程中执行待处理的回调函数"""
+        try:
+            if self._pending_callback and callable(self._pending_callback):
+                logger.info(f"[HOTKEY] 🎯 Executing pending callback in main thread")
+                callback = self._pending_callback
+                self._pending_callback = None  # 清除待处理的回调
+                callback()
+            else:
+                logger.warning(f"[HOTKEY] ⚠️ No valid pending callback to execute")
+                
+        except Exception as e:
+            import traceback
+            logger.error(f"[HOTKEY] ❌ Error executing pending callback: {e} - {traceback.format_exc()}")
     
     def get_registered_hotkeys(self) -> Dict[str, Callable]:
         """获取已注册的热键列表"""
