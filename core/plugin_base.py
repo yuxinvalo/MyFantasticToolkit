@@ -209,6 +209,13 @@ class PluginBase(QObject, ABC, metaclass=PluginMeta):
         Returns:
             设置值
         """
+        # 首先尝试从available_config中获取（实时读取）
+        if self._config and 'available_config' in self._config:
+            # 重新加载配置以获取最新值
+            self._load_plugin_config()
+            if key in self._config.get('available_config', {}):
+                return self._config['available_config'][key]
+        
         # 优先使用本地配置
         if self._config and 'settings' in self._config:
             return self._config['settings'].get(key, default)

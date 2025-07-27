@@ -27,6 +27,7 @@ class PluginManager(QObject):
     plugin_error = Signal(str, str)  # 插件错误信号 (plugin_name, error_message)
     plugin_enabled = Signal(str)  # 插件启用信号
     plugin_disabled = Signal(str)  # 插件禁用信号
+    plugin_config_changed = Signal(str, dict)  # 插件配置变更信号 (plugin_name, new_config)
     
     def __init__(self, app):
         super().__init__()
@@ -436,6 +437,9 @@ class PluginManager(QObject):
             # 保存更新后的配置到插件的config.json文件
             with open(config_file, 'w', encoding='utf-8') as f:
                 json.dump(existing_config, f, indent=2, ensure_ascii=False)
+            
+            # 发射配置变更信号
+            self.plugin_config_changed.emit(plugin_name, new_config)
             
             logger.info(f"[PLUGIN] 💾 Available config updated for plugin {plugin_name}: {new_config}")
             return True

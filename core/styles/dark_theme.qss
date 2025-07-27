@@ -529,7 +529,13 @@ PluginItemWidget:hover {
 
 #plugin-button-disabled {
     background-color: #1e1e1e;
-    color: #969696;
+    color: #666666;
+    border: 1px solid #3e3e42;
+}
+
+#plugin-button-disabled:hover {
+    background-color: #1e1e1e;
+    color: #666666;
     border: 1px solid #3e3e42;
 }
 

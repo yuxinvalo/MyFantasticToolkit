@@ -1,0 +1,18 @@
+{
+  "plugin_info": {
+    "name": "little_capturer",
+    "display_name": "LittleCapturer",
+    "description": "专业的截图工具插件，超越Windows系统自带截图功能",
+    "version": "1.0.0",
+    "author": "HSBC IT Support"
+  },
+  "available_config": {
+    "enabled": true,
+    "keyboard_shortcut": "Alt+Shift+Z",
+    "auto_hide_window": true,
+    "save_path": "./screenshots",
+    "enable_ocr": true,
+    "enable_pin": true,
+    "enable_edit": true
+  }
+}

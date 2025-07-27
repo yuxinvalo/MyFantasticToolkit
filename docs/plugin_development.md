@@ -83,11 +83,12 @@ class Plugin(PluginBase):
   "plugin_info": {
     "name": "my_plugin",
     "display_name": "我的插件",
+    "description": "一个示例插件",
     "version": "1.0.0",
-    "author": "Your Name",
-    "enabled": true
+    "author": "Your Name"
   },
-  "settings": {
+  "available_config": {
+    "enabled": true,
     "auto_save": true
   }
 }
@@ -126,21 +127,23 @@ def create_widget(self) -> QWidget:
 
 ### 常用方法
 ```python
-# 配置管理
-self.get_setting(key, default)  # 获取配置
-self.set_setting(key, value)    # 设置配置
+# 配置管理（available_config 字段）
+self.get_setting(key, default)     # 获取可配置项
+self.set_setting(key, value)       # 设置可配置项
+self.get_plugin_info(key)          # 获取插件信息（只读）
 
 # 本地化翻译
-self.tr(key, **kwargs)          # 获取翻译文本
-self.set_language(lang_code)    # 设置语言
+self.tr(key, **kwargs)             # 获取翻译文本
+self.set_language(lang_code)       # 设置语言
 
 # 日志记录
-self.log_info(message)          # 信息日志
-self.log_warning(message)       # 警告日志
-self.log_error(message)         # 错误日志
+self.log_info(message)             # 信息日志
+self.log_warning(message)          # 警告日志
+self.log_error(message)            # 错误日志
+self.log_debug(message)            # 调试日志
 
 # UI交互
-self.show_status_message(msg)   # 显示状态消息
+self.show_status_message(msg)      # 显示状态消息
 ```
 
 ## 🎨 UI界面开发
@@ -176,10 +179,12 @@ def _on_button_clicked(self):
   "plugin_info": {
     "name": "my_plugin",
     "display_name": "我的插件",
+    "description": "插件描述信息",
     "version": "1.0.0",
-    "enabled": true
+    "author": "作者名称"
   },
-  "settings": {
+  "available_config": {
+    "enabled": true,
     "auto_save": true,
     "theme_color": "#007bff"
   }
@@ -193,15 +198,25 @@ class Plugin(PluginBase):
     def __init__(self, app=None):
         super().__init__(app)
         
-        # 读取本地配置
+        # 读取插件配置（从 available_config 字段）
         self.auto_save = self.get_setting('auto_save', True)
         self.theme_color = self.get_setting('theme_color', '#007bff')
+        
+        # 插件信息（从 plugin_info 字段，只读）
+        self.plugin_name = self.get_plugin_info('name')
+        self.plugin_version = self.get_plugin_info('version')
     
     def save_settings(self):
         """保存配置到本地文件"""
+        # 只能修改 available_config 中的配置项
         self.set_setting('auto_save', self.auto_save)
         self.set_setting('theme_color', self.theme_color)
-        self.log_info("💾 配置已保存")
+        self.log_info("[配置] 💾 配置已保存")
+    
+    def get_plugin_info(self, key: str):
+        """获取插件信息（只读）"""
+        # 从 plugin_info 字段获取信息
+        return self.config.get('plugin_info', {}).get(key)
 ```
 
 ### 🔄 插件配置重构方案
@@ -238,17 +253,16 @@ plugins/
   "plugin_info": {
     "name": "demo_plugin",
     "display_name": "演示插件",
+    "description": "用于测试插件系统的演示插件",
     "version": "1.0.0",
-    "author": "HSBC IT Support",
-    "enabled": true
+    "author": "HSBC IT Support"
   },
-  "settings": {
+  "available_config": {
+    "enabled": true,
     "click_count": 0,
     "auto_save": true,
-    "theme_color": "#007bff"
-  },
-  "hotkeys": {
-    "toggle_plugin": "Ctrl+Shift+D"
+    "theme_color": "#007bff",
+    "hotkey": "Ctrl+Shift+D"
   }
 }
 ```
@@ -265,15 +279,31 @@ plugins/
 
 **重构后的插件基类使用**：
 ```python
-class Plugin(SimplePluginBase):
+class Plugin(PluginBase):
     def __init__(self, app=None):
         super().__init__(app)
         # 插件会自动加载自己目录下的配置和翻译文件
         
+        # 读取插件配置
+        self.click_count = self.get_setting('click_count', 0)
+        self.auto_save = self.get_setting('auto_save', True)
+        
+    def initialize(self) -> bool:
+        """初始化插件"""
+        self.log_info("[演示插件] 🚀 插件初始化完成")
+        return True
+        
     def create_widget(self) -> QWidget:
+        """创建插件界面"""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        
         # 使用插件专用翻译方法
         title = QLabel(self.tr("plugin.demo.name"))
         button = QPushButton(self.tr("plugin.demo.click_button"))
+        
+        layout.addWidget(title)
+        layout.addWidget(button)
         return widget
 ```
 
@@ -399,48 +429,92 @@ plugins/
 ```python
 # plugins/my_plugin/__init__.py
 
-class Plugin(SimplePluginBase):  # 必须继承自 PluginBase 或其子类
+class Plugin(PluginBase):  # 必须继承自 PluginBase 或其子类
     """插件主类，名称必须是 Plugin"""
     
-    # 必须定义的元信息
+    # 插件元信息（用于自动生成 config.json）
     NAME = "my_plugin"
     DISPLAY_NAME = "我的插件"
     DESCRIPTION = "插件描述"
     VERSION = "1.0.0"
     AUTHOR = "作者名称"
     
-    # 必须实现的方法
     def initialize(self) -> bool:
-        pass
+        """初始化插件"""
+        self.log_info("[插件] 🚀 初始化完成")
+        return True
     
     def create_widget(self) -> QWidget:
-        pass
+        """创建插件界面组件"""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        
+        # 使用插件本地翻译
+        title = QLabel(self.tr("plugin.my_plugin.title"))
+        button = QPushButton(self.tr("plugin.my_plugin.button"))
+        
+        layout.addWidget(title)
+        layout.addWidget(button)
+        return widget
 ```
 
-### 插件启用配置
-config.json文档必须存在，且包含以下字段，否则插件将无法使用。如果不使用config.json，插件的类的元信息则必须包含以下配置，在正确读取元信息后，config.json将会自动生成在该plugin目录下。
+### 插件配置文件规范
+
+#### 📋 配置文件要求
+
+`config.json` 文档**必须存在**，且包含以下字段，否则插件将无法使用：
 
 ```json
-"plugin_info": {
+{
+  "plugin_info": {
     "name": "demo_plugin",
     "display_name": "Demo Plugin",
     "description": "A demo plugin for testing the plugin system",
     "version": "1.0.0",
-    "author": "HSBC IT Support",
+    "author": "HSBC IT Support"
   },
-"available_config":{
+  "available_config": {
     "enabled": true
   }
+}
 ```
 
-关于插件配置字段，其中plugin_info不支持修改。支持修改的配置应当放在available_config字段中。    
-可配置的字段有：
-- "enabled": 必须带的布尔字段，用于控制插件是否启用。
-- bool: 将会作为开关UI显示
-- string: 将会作为文本输入框UI显示，最长为100个字符
-- int: 将会作为数字输入框UI显示
-- list: 将会作为列表选择框UI显示, 并且list最后一个值将是首选项，如果做了修改，该选项会进入list的最后一个位置
-- "keyboard": 将会作为键盘输入框UI显示
+#### 🔧 配置字段说明
+
+**`plugin_info` 字段（只读信息）**：
+- `name`: 插件唯一标识符
+- `display_name`: 插件显示名称
+- `description`: 插件描述信息
+- `version`: 插件版本号
+- `author`: 插件作者
+
+> ⚠️ **注意**：`plugin_info` 字段不支持运行时修改，仅用于插件信息展示。
+
+**`available_config` 字段（可配置项）**：
+- `"enabled"`: **必须字段**，布尔值，控制插件是否启用
+- `bool`: 布尔类型配置，在UI中显示为开关
+- `string`: 字符串类型配置，在UI中显示为文本输入框（最长100字符）
+- `int`: 整数类型配置，在UI中显示为数字输入框
+- `list`: 列表类型配置，在UI中显示为下拉选择框
+  - 列表最后一个值为默认选项
+  - 修改后，新选项会移动到列表末尾
+- `"keyboard"`: 键盘快捷键配置，在UI中显示为快捷键输入框
+
+#### 🔄 自动生成机制
+
+如果插件目录下不存在 `config.json`，系统会尝试从插件类的元信息自动生成：
+
+```python
+class Plugin(PluginBase):
+    # 插件元信息
+    NAME = "my_plugin"
+    DISPLAY_NAME = "我的插件"
+    DESCRIPTION = "插件描述"
+    VERSION = "1.0.0"
+    AUTHOR = "作者名称"
+```
+
+系统读取元信息后，会自动在插件目录下生成对应的 `config.json` 文件。
 
 ## 💡 最佳实践
 
@@ -470,7 +544,8 @@ self.log_error(f"[插件] ❌ 连接失败: {e} - {traceback.format_exc()}")
 本指南介绍了HSBC Little Worker插件开发的核心要点：
 
 - **插件结构**: 继承PluginBase，实现initialize()和create_widget()方法
-- **本地化配置**: 支持config.json配置文件和translations翻译目录
+- **配置管理**: 使用规范的config.json格式，区分plugin_info（只读）和available_config（可配置）
+- **本地化支持**: 每个插件独立的translations翻译目录
 - **最佳实践**: 使用标签化日志、规范错误处理、支持多语言
 
 开始开发你的第一个插件吧！ 🚀
@@ -494,6 +569,7 @@ self.log_error(f"[插件] ❌ 连接失败: {e} - {traceback.format_exc()}")
 
 如果在开发过程中遇到问题，请参考：
 - 📚 示例插件代码 (`plugins/demo_plugin/`)
+- 📋 插件配置文件规范（本文档「插件配置文件规范」章节）
 - 📝 应用程序日志文件
 - 🔍 插件管理器的错误信息
 - 💬 开发团队的技术支持

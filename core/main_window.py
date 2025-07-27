@@ -301,14 +301,20 @@ class MainWindow(QWidget):
             button = self.plugin_buttons[plugin_name]
             button.setEnabled(True)
             button.setObjectName("plugin-button")
+            # 强制刷新样式
+            button.style().unpolish(button)
+            button.style().polish(button)
             logger.debug(f"[PLUGIN] ✅ Plugin button enabled: {plugin_name}")
     
     def disable_plugin_button(self, plugin_name):
         """禁用插件按钮"""
         if plugin_name in self.plugin_buttons:
             button = self.plugin_buttons[plugin_name]
-            button.setEnabled(False)
+            button.setEnabled(True)  # 保持按钮可点击
             button.setObjectName("plugin-button-disabled")
+            # 强制刷新样式
+            button.style().unpolish(button)
+            button.style().polish(button)
             logger.debug(f"[PLUGIN] ❌ Plugin button disabled: {plugin_name}")
     
     def on_language_changed(self):

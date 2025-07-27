@@ -1,6 +1,4 @@
 {
-  "enabled_plugins": [
-    "demo_plugin"
-  ],
+  "enabled_plugins": [],
   "plugin_settings": {}
 }

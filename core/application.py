@@ -335,24 +335,30 @@ class LittleWorkerApp(QMainWindow):
             logger.error(f"[PLUGIN] ❌ Plugin manager initialization failed: {e} - {traceback.format_exc()}")
     
     def _sync_plugin_button_states(self):
-        """同步插件按钮状态与插件加载状态"""
+        """同步插件按钮状态与插件启用状态"""
         try:
             if not self.main_window or not hasattr(self.main_window, 'plugin_buttons'):
                 return
             
-            # 获取所有已加载的插件
-            loaded_plugins = self.plugin_manager.get_loaded_plugins()
+            # 获取所有可用插件的信息
+            available_plugins = self.plugin_manager.discover_plugins()
             
-            # 遍历所有插件按钮，设置正确的状态
+            # 创建插件启用状态映射
+            plugin_enabled_map = {}
+            for plugin_info in available_plugins:
+                plugin_enabled_map[plugin_info['name']] = plugin_info.get('enabled', False)
+            
+            # 遍历所有插件按钮，根据enabled状态设置样式
             for plugin_name, button in self.main_window.plugin_buttons.items():
-                if plugin_name in loaded_plugins:
-                    # 插件已加载，启用按钮
+                is_enabled = plugin_enabled_map.get(plugin_name, False)
+                if is_enabled:
+                    # 插件已启用，使用正常样式
                     self.main_window.enable_plugin_button(plugin_name)
                 else:
-                    # 插件未加载，禁用按钮
+                    # 插件未启用，使用灰色样式
                     self.main_window.disable_plugin_button(plugin_name)
             
-            logger.info(f"[PLUGIN] 🔄 Plugin button states synchronized")
+            logger.info(f"[PLUGIN] 🔄 Plugin button states synchronized based on enabled status")
             
         except Exception as e:
             logger.error(f"[PLUGIN] ❌ Failed to sync plugin button states: {e} - {traceback.format_exc()}")
@@ -413,11 +419,15 @@ class LittleWorkerApp(QMainWindow):
     def _on_plugin_enabled(self, plugin_name):
         """插件启用回调"""
         self.statusBar().showMessage(tr("status.plugin_enabled").format(name=plugin_name), 3000)
+        # 同步插件按钮状态
+        self._sync_plugin_button_states()
         logger.debug(f"[PLUGIN] ✅ Plugin enabled: {plugin_name}")
     
     def _on_plugin_disabled(self, plugin_name):
         """插件禁用回调"""
         self.statusBar().showMessage(tr("status.plugin_disabled").format(name=plugin_name), 3000)
+        # 同步插件按钮状态
+        self._sync_plugin_button_states()
         logger.debug(f"[PLUGIN] ❌ Plugin disabled: {plugin_name}")
     
     def _on_tray_activated(self, reason):
@@ -457,20 +467,6 @@ class LittleWorkerApp(QMainWindow):
             from .plugin_manager_dialog import PluginManagerDialog
             
             dialog = PluginManagerDialog(self.plugin_manager, self)
-            
-            # 连接插件启用/禁用信号
-            dialog.plugin_enabled.connect(self.plugin_manager.enable_plugin)
-            dialog.plugin_disabled.connect(self.plugin_manager.disable_plugin)
-            
-            # 连接插件加载/卸载信号到主窗口按钮状态更新
-            dialog.plugin_loaded.connect(self.main_window.enable_plugin_button)
-            dialog.plugin_unloaded.connect(self.main_window.disable_plugin_button)
-            
-            # 连接插件状态变更信号到对话框刷新
-            self.plugin_manager.plugin_enabled.connect(dialog.refresh_plugin_list)
-            self.plugin_manager.plugin_disabled.connect(dialog.refresh_plugin_list)
-            self.plugin_manager.plugin_loaded.connect(dialog.refresh_plugin_list)
-            self.plugin_manager.plugin_unloaded.connect(dialog.refresh_plugin_list)
             
             # 居中显示对话框
             self._center_dialog(dialog)

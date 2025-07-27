@@ -1,0 +1,21 @@
+{
+  "plugin.capturer.name": "Screenshot Tool",
+  "plugin.capturer.description": "Professional screenshot tool with area capture, editing and OCR",
+  "plugin.capturer.description_detail": "Professional screenshot tool with area capture, editing and OCR capabilities",
+  "plugin.capturer.features_html": "<h4 style='color: #e74c3c; margin-bottom: 25px; font-size: 15px;'>🎯 Main Features</h4><ul style='margin: 0; padding-left: 10px; font-size: 13px;'><li style='margin-bottom: 8px;'>📸 <strong>Flexible Area Selection:</strong> Mouse drag to select capture area</li><li style='margin-bottom: 8px;'>✂️ <strong>Image Editing:</strong> Supports cropping/annotation</li><li style='margin-bottom: 8px;'>🔍 <strong>OCR Text Recognition:</strong> Intelligent text extraction</li></ul>",
+  "plugin.capturer.usage_html": "<h4 style='color: #3498db; margin-bottom: 10px;'>📋 Usage Instructions</h4><div style='background-color: #ecf0f1; padding: 10px; border-radius: 6px; margin-bottom: 15px;'><p style='margin: 0; color: #e74c3c; font-weight: bold; text-align: center; font-size: 14px;'>Press {hotkey} to start capture</p></div><ol style='margin: 0; padding-left: 20px;'><li style='margin-bottom: 8px;'>Press the hotkey to enter capture mode</li><li style='margin-bottom: 8px;'>Drag mouse to select capture area</li><li style='margin-bottom: 8px;'>Use editing tools for annotation</li><li style='margin-bottom: 8px;'>Save or copy the result</li></ol>",
+  "plugin.capturer.hotkey_tip": "Press {hotkey} to start capture",
+  "plugin.capturer.capture_area": "Drag to select capture area",
+  "plugin.capturer.save_success": "Screenshot saved to: {path}",
+  "plugin.capturer.ocr_result": "OCR Result",
+  "plugin.capturer.pin_image": "Pin to Screen",
+  "plugin.capturer.edit_image": "Edit Image",
+  "plugin.capturer.save_image": "Save Image",
+  "plugin.capturer.copy_text": "Copy Text",
+  "plugin.capturer.settings": "Capture Settings",
+  "plugin.capturer.capture_button": "🎯 Start Capture",
+  "plugin.capturer.capture_button_base": "🎯 Start Capture",
+  "plugin.capturer.button.capture": "Start Capture",
+  "plugin.capturer.button.settings": "Settings",
+  "plugin.capturer.button.history": "History"
+}
