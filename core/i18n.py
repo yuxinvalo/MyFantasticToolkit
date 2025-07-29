@@ -9,7 +9,7 @@ import json
 from typing import Dict, Optional
 from PySide6.QtCore import QObject, Signal, QLocale, QTranslator, QCoreApplication
 from PySide6.QtWidgets import QApplication
-
+from utils.logger import logger
 
 class I18nManager(QObject):
     """国际化管理器"""
@@ -19,7 +19,7 @@ class I18nManager(QObject):
     
     def __init__(self):
         super().__init__()
-        self.current_language = "zh_CN"  # 默认中文
+        self.current_language = "en_US"  # 默认英文
         self.translations: Dict[str, Dict[str, str]] = {}
         self.plugin_translations: Dict[str, Dict[str, Dict[str, str]]] = {}  # 插件翻译缓存
         self.translator = QTranslator()
@@ -42,7 +42,7 @@ class I18nManager(QObject):
         self.load_translations()
         
         # 设置默认语言
-        self.set_language(self.detect_system_language())
+        # self.set_language(self.detect_system_language())
     
     def detect_system_language(self) -> str:
         """检测系统语言"""
@@ -63,7 +63,7 @@ class I18nManager(QObject):
                     with open(translation_file, 'r', encoding='utf-8') as f:
                         self.translations[lang_code] = json.load(f)
                 except Exception as e:
-                    print(f"Failed to load translation file {translation_file}: {e}")
+                    logger.error(f"Failed to load translation file {translation_file}: {e}")
                     self.translations[lang_code] = {}
             else:
                 self.translations[lang_code] = {}
@@ -124,7 +124,7 @@ class I18nManager(QObject):
                 with open(translation_file, 'w', encoding='utf-8') as f:
                     json.dump(translations, f, ensure_ascii=False, indent=2)
             except Exception as e:
-                print(f"Failed to save translation file {translation_file}: {e}")
+                logger.error(f"Failed to save translation file {translation_file}: {e}")
     
     def register_plugin_translations(self, plugin_name: str, translations_dir: str):
         """注册插件翻译
@@ -143,7 +143,7 @@ class I18nManager(QObject):
                     with open(translation_file, 'r', encoding='utf-8') as f:
                         plugin_translations[lang_code] = json.load(f)
                 except Exception as e:
-                    print(f"Failed to load plugin translation file {translation_file}: {e}")
+                    logger.error(f"Failed to load plugin translation file {translation_file}: {e}")
                     plugin_translations[lang_code] = {}
             else:
                 plugin_translations[lang_code] = {}

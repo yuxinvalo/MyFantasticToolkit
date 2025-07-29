@@ -135,7 +135,7 @@ class LittleWorkerApp(QMainWindow):
             if os.path.exists(base_qss_path):
                 with open(base_qss_path, 'r', encoding='utf-8') as f:
                     base_styles = f.read()
-                logger.debug(f"[THEME] 📄 Base styles loaded from: {base_qss_path}")
+                # logger.debug(f"[THEME] 📄 Base styles loaded from: {base_qss_path}")
             else:
                 logger.warning(f"[THEME] ⚠️ Base styles file not found: {base_qss_path}")
             
@@ -144,7 +144,7 @@ class LittleWorkerApp(QMainWindow):
             if os.path.exists(theme_qss_path):
                 with open(theme_qss_path, 'r', encoding='utf-8') as f:
                     theme_styles = f.read()
-                logger.debug(f"[THEME] 🎨 Theme styles loaded from: {theme_qss_path}")
+                # logger.debug(f"[THEME] 🎨 Theme styles loaded from: {theme_qss_path}")
             else:
                 logger.warning(f"[THEME] ⚠️ Theme styles file not found: {theme_qss_path}")
             
@@ -152,7 +152,7 @@ class LittleWorkerApp(QMainWindow):
             combined_styles = base_styles + "\n" + theme_styles
             if combined_styles.strip():
                 QApplication.instance().setStyleSheet(combined_styles)
-                logger.info(f"[THEME] ✅ Theme '{theme}' applied successfully")
+                # logger.debug(f"[THEME] ✅ Theme '{theme}' applied successfully")
             else:
                 logger.warning("[THEME] ⚠️ No styles to apply")
                 
@@ -202,7 +202,7 @@ class LittleWorkerApp(QMainWindow):
         # 创建状态栏
         self._create_status_bar()
         
-        logger.info("[STARTUP] ✅ Main window initialized")
+        logger.debug("[STARTUP] ✅ Main window initialized")
     
     def _create_menu_bar(self):
         """创建菜单栏"""

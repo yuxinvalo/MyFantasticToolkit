@@ -34,10 +34,13 @@ def get_app_config():
     
     # 返回默认配置
     return {
-        "name": "HSBC Little Worker",
-        "version": "1.0.0",
-        "organization": "HSBC Finance IT Support"
-    }
+            "name": "HSBC Little Worker",
+            "version": "1.0.0",
+            "organization": "HSBC Finance IT Support",
+            "author": "Tearsyu",
+            "description": "HSBC Little Worker 是一个基于 PySide6 开发的插件化工具平台，用于个人工作小工具集合。",
+            "license": "MIT"
+        }
 
 
 def main():
