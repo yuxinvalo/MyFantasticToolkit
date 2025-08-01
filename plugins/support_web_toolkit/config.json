@@ -1,0 +1,18 @@
+{
+  "plugin_info": {
+    "name": "support_web_toolkit",
+    "display_name": "Support Web Toolkit",
+    "version": "1.0.0",
+    "author": "Tearsyu",
+    "description": "IT Support Web Toolkit, 提供一些常用的工具，例如json格式化工具、时差转换、markdown文本撰写转格式等。"
+  },
+  "available_config": {
+    "enabled": true,
+    "port": 8501,
+    "host": [
+      "localhost",
+      "0.0.0.0",
+      "0.0.0.0"
+    ]
+  }
+}

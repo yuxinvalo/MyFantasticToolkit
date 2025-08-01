@@ -135,8 +135,6 @@ class PluginItemWidget(QFrame):
     
     # 信号定义
     plugin_enabled_changed = Signal(str, bool)  # 插件启用状态变化信号
-    plugin_load_requested = Signal(str)  # 插件加载请求信号
-    plugin_unload_requested = Signal(str)  # 插件卸载请求信号
     plugin_config_requested = Signal(str)  # 插件配置请求信号
     
     def __init__(self, plugin_data, parent=None):
@@ -295,11 +293,8 @@ class PluginItemWidget(QFrame):
         self.enabled_checkbox.setEnabled(is_available)  # 只有可用的插件才能操作
     
     def _on_enabled_changed(self, enabled):
-        """启用状态变化处理（现在控制加载/卸载）"""
-        if enabled:
-            self.plugin_load_requested.emit(self.plugin_name)
-        else:
-            self.plugin_unload_requested.emit(self.plugin_name)
+        """启用状态变化处理（直接触发启用状态变化信号）"""
+        self.plugin_enabled_changed.emit(self.plugin_name, enabled)
     
     def _on_config_clicked(self):
         """配置按钮点击处理"""
@@ -726,7 +721,7 @@ class PluginManagerDialog(QDialog):
         # 连接信号
         self._connect_signals()
         
-        logger.info("[PLUGIN_MANAGER] 🔧 Plugin manager dialog initialized")
+        logger.debug("[PLUGIN_MANAGER] 🔧 Plugin manager dialog initialized")
     
     def _init_ui(self):
         """初始化用户界面"""
@@ -844,16 +839,14 @@ class PluginManagerDialog(QDialog):
             for plugin_data in self.plugins_data:
                 plugin_name = plugin_data['name']
                 
-                # 设置加载状态
-                if plugin_name in loaded_plugins:
-                    plugin_data['loaded'] = True
-                    plugin_data['status'] = tr("plugin_manager.status.loaded")
+                # 设置加载状态（用于UI控制）
+                plugin_data['loaded'] = plugin_name in loaded_plugins
+                
+                # 设置状态显示（只基于可用性）
+                if plugin_data.get('is_available', True):
+                    plugin_data['status'] = tr("plugin_manager.status.available")
                 else:
-                    plugin_data['loaded'] = False
-                    if plugin_data.get('is_available', True):
-                        plugin_data['status'] = tr("plugin_manager.status.available")
-                    else:
-                        plugin_data['status'] = tr("plugin_manager.status.error")
+                    plugin_data['status'] = tr("plugin_manager.status.error")
             
             # 更新插件列表
             self._update_plugin_list()
@@ -883,10 +876,6 @@ class PluginManagerDialog(QDialog):
                 # 连接信号（检查信号是否存在）
                 if hasattr(plugin_widget, 'plugin_enabled_changed'):
                     plugin_widget.plugin_enabled_changed.connect(self._on_plugin_enabled_changed)
-                if hasattr(plugin_widget, 'plugin_load_requested'):
-                    plugin_widget.plugin_load_requested.connect(self._load_plugin)
-                if hasattr(plugin_widget, 'plugin_unload_requested'):
-                    plugin_widget.plugin_unload_requested.connect(self._unload_plugin)
                 if hasattr(plugin_widget, 'plugin_config_requested'):
                     plugin_widget.plugin_config_requested.connect(self._on_plugin_config_requested)
                 
@@ -927,27 +916,13 @@ class PluginManagerDialog(QDialog):
         """插件启用状态变化处理"""
         try:
             if enabled:
-                # 启用插件
-                if self.plugin_manager.enable_plugin(plugin_name):
-                    logger.info(f"[PLUGIN_MANAGER] ✅ Plugin enabled: {plugin_name}")
-                    # 刷新插件列表以更新UI状态
-                    self._refresh_plugins()
-                else:
-                    # 启用失败，恢复复选框状态
-                    self._refresh_plugins()
-                    QMessageBox.warning(self, tr("plugin_manager.error"),
-                                      tr("plugin_manager.enable_error").format(name=plugin_name))
+                # 启用并加载插件
+                self._load_plugin(plugin_name)
             else:
-                # 禁用插件
-                if self.plugin_manager.disable_plugin(plugin_name):
-                    logger.info(f"[PLUGIN_MANAGER] ❌ Plugin disabled: {plugin_name}")
-                    # 刷新插件列表以更新UI状态
-                    self._refresh_plugins()
-                else:
-                    # 禁用失败，恢复复选框状态
-                    self._refresh_plugins()
-                    QMessageBox.warning(self, tr("plugin_manager.error"),
-                                      tr("plugin_manager.disable_error").format(name=plugin_name))
+                # 卸载并禁用插件
+                self._unload_plugin(plugin_name)
+            # 刷新插件列表以更新UI状态
+            self._refresh_plugins()
         except Exception as e:
             logger.error(f"[PLUGIN_MANAGER] ❌ Error changing plugin state: {e}")
             self._refresh_plugins()
@@ -955,13 +930,21 @@ class PluginManagerDialog(QDialog):
     def _load_plugin(self, plugin_name):
         """加载插件"""
         try:
-            if self.plugin_manager.load_plugin(plugin_name):
-                logger.info(f"[PLUGIN_MANAGER] 🔌 Plugin loaded: {plugin_name}")
-                self.plugin_loaded.emit(plugin_name)  # 发出插件加载信号
-                # 不需要刷新整个插件列表，只更新对应插件项的状态
+            # 先启用插件（更新config.json中的enabled状态）
+            if self.plugin_manager.enable_plugin(plugin_name):
+                # 然后加载插件
+                if self.plugin_manager.load_plugin(plugin_name):
+                    logger.info(f"[PLUGIN_MANAGER] 🔌 Plugin loaded: {plugin_name}")
+                    self.plugin_loaded.emit(plugin_name)  # 发出插件加载信号
+                    # 不需要刷新整个插件列表，只更新对应插件项的状态
+                else:
+                    # 加载失败，回滚启用状态
+                    self.plugin_manager.disable_plugin(plugin_name)
+                    QMessageBox.warning(self, tr("plugin_manager.error"),
+                                      tr("plugin_manager.load_error_msg").format(name=plugin_name))
             else:
                 QMessageBox.warning(self, tr("plugin_manager.error"),
-                                  tr("plugin_manager.load_error_msg").format(name=plugin_name))
+                                  tr("plugin_manager.enable_error").format(name=plugin_name))
         except Exception as e:
             logger.error(f"[PLUGIN_MANAGER] ❌ Error loading plugin: {e}")
             QMessageBox.warning(self, tr("plugin_manager.error"), str(e))
@@ -969,10 +952,16 @@ class PluginManagerDialog(QDialog):
     def _unload_plugin(self, plugin_name):
         """卸载插件"""
         try:
+            # 先卸载插件
             if self.plugin_manager.unload_plugin(plugin_name):
-                logger.info(f"[PLUGIN_MANAGER] 🗑️ Plugin unloaded: {plugin_name}")
-                self.plugin_unloaded.emit(plugin_name)  # 发出插件卸载信号
-                # 不需要刷新整个插件列表，只更新对应插件项的状态
+                # 然后禁用插件（更新config.json中的enabled状态）
+                if self.plugin_manager.disable_plugin(plugin_name):
+                    logger.info(f"[PLUGIN_MANAGER] 🗑️ Plugin unloaded and disabled: {plugin_name}")
+                    self.plugin_unloaded.emit(plugin_name)  # 发出插件卸载信号
+                    # 不需要刷新整个插件列表，只更新对应插件项的状态
+                else:
+                    logger.warning(f"[PLUGIN_MANAGER] ⚠️ Plugin unloaded but failed to disable: {plugin_name}")
+                    self.plugin_unloaded.emit(plugin_name)  # 仍然发出卸载信号
             else:
                 QMessageBox.warning(self, tr("plugin_manager.error"),
                                   tr("plugin_manager.unload_error").format(name=plugin_name))
@@ -1048,14 +1037,14 @@ class PluginManagerDialog(QDialog):
                 # 更新插件数据中的加载状态
                 for plugin_data in self.plugins_data:
                     if plugin_data['name'] == plugin_name:
+                        # 更新加载状态（用于UI控制）
                         plugin_data['loaded'] = plugin_name in loaded_plugins
-                        if plugin_data['loaded']:
-                            plugin_data['status'] = tr("plugin_manager.status.loaded")
+                        
+                        # 状态显示只基于可用性，不再区分loaded/unloaded
+                        if plugin_data.get('is_available', True):
+                            plugin_data['status'] = tr("plugin_manager.status.available")
                         else:
-                            if plugin_data.get('is_available', True):
-                                plugin_data['status'] = tr("plugin_manager.status.available")
-                            else:
-                                plugin_data['status'] = tr("plugin_manager.status.error")
+                            plugin_data['status'] = tr("plugin_manager.status.error")
                         
                         # 更新widget显示
                         plugin_widget.update_plugin_data(plugin_data)

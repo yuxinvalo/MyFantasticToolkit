@@ -70,7 +70,6 @@
   "plugin_manager.refresh": "Refresh",
   "plugin_manager.refresh_error": "Failed to refresh plugin list: {error}",
   "plugin_manager.close": "Close",
-  "plugin_manager.status.loaded": "Loaded",
   "plugin_manager.status.available": "Available",
   "plugin_manager.status.error": "Error",
   "plugin_manager.error": "Error",

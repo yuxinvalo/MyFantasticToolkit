@@ -474,7 +474,8 @@ class Plugin(PluginBase):  # 必须继承自 PluginBase 或其子类
     "author": "HSBC IT Support"
   },
   "available_config": {
-    "enabled": true
+    "enabled": true,
+    "loaded": true,
   }
 }
 ```

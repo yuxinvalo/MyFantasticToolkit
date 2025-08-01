@@ -67,7 +67,7 @@ class LittleWorkerApp(QMainWindow):
                     config = json.load(f)
                     language = config.get("ui_settings", {}).get("language", "en_US")
                     self.i18n_manager.set_language(language)
-                    logger.info(f"[SETTINGS] 🌐 Language loaded: {language}")
+                    # logger.info(f"[SETTINGS] 🌐 Language loaded: {language}")
             else:
                 logger.warning("[SETTINGS] ⚠️ Config file not found, using default language")
                 

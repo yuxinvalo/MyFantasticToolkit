@@ -40,9 +40,12 @@ class PluginManager(QObject):
         # 确保目录存在
         self.plugins_dir.mkdir(exist_ok=True)
         
-        # 插件配置
-        self.plugin_configs = {}
-        self._load_plugin_configs()
+        # 插件配置改为从各个插件的config.json中读取
+        self.plugin_configs = {
+            'enabled_plugins': [],
+            'plugin_settings': {}
+        }
+        self._load_enabled_plugins_from_configs()
 
     def discover_plugins(self) -> List[Dict[str, Any]]:
         """发现可用插件"""
@@ -124,7 +127,7 @@ class PluginManager(QObject):
                     'has_local_config': (plugin_dir / "config.json").exists(),
                 })
                 
-                logger.info(f"[PLUGIN] 🔍 Plugin {plugin_name} discovered: {plugin_info}")
+                logger.info(f"[PLUGIN] 🔍 Plugin {plugin_name} discovered")
                 return plugin_info
                 
             except Exception as e:
@@ -287,11 +290,11 @@ class PluginManager(QObject):
             # 从插件字典中移除
             del self.plugins[plugin_name]
             
-            # 禁用主窗口的插件按钮（不移除按钮）
+            # 从主窗口移除插件按钮（隐藏按钮）
             if self.app and hasattr(self.app, 'get_main_window'):
                 main_window = self.app.get_main_window()
-                if main_window and hasattr(main_window, 'disable_plugin_button'):
-                    main_window.disable_plugin_button(plugin_name)
+                if main_window and hasattr(main_window, 'remove_plugin_button'):
+                    main_window.remove_plugin_button(plugin_name)
             
             # 从sys.modules中移除
             module_name = f"plugins.{plugin_name}"
@@ -312,9 +315,14 @@ class PluginManager(QObject):
         enabled_plugins = self.plugin_configs.get('enabled_plugins', [])
         
         if plugin_name not in enabled_plugins:
+            # 更新插件自己的config.json文件中的enabled字段
+            success = self.update_plugin_config(plugin_name, {'enabled': True})
+            if not success:
+                return False
+            
+            # 更新内存中的启用列表
             enabled_plugins.append(plugin_name)
             self.plugin_configs['enabled_plugins'] = enabled_plugins
-            self._save_plugin_config()
             
             # 立即加载插件
             success = self.load_plugin(plugin_name)
@@ -330,9 +338,14 @@ class PluginManager(QObject):
         enabled_plugins = self.plugin_configs.get('enabled_plugins', [])
         
         if plugin_name in enabled_plugins:
+            # 更新插件自己的config.json文件中的enabled字段
+            success = self.update_plugin_config(plugin_name, {'enabled': False})
+            if not success:
+                return False
+            
+            # 更新内存中的启用列表
             enabled_plugins.remove(plugin_name)
             self.plugin_configs['enabled_plugins'] = enabled_plugins
-            self._save_plugin_config()
             
             # 卸载插件
             success = self.unload_plugin(plugin_name)
@@ -358,14 +371,21 @@ class PluginManager(QObject):
     
     def set_plugin_setting(self, plugin_name: str, key: str, value):
         """设置插件设置"""
-        if 'plugin_settings' not in self.plugin_configs:
-            self.plugin_configs['plugin_settings'] = {}
+        # 直接更新插件的config.json文件
+        success = self.update_plugin_config(plugin_name, {key: value})
         
-        if plugin_name not in self.plugin_configs['plugin_settings']:
-            self.plugin_configs['plugin_settings'][plugin_name] = {}
+        if success:
+            # 同时更新内存中的设置（用于兼容性）
+            if 'plugin_settings' not in self.plugin_configs:
+                self.plugin_configs['plugin_settings'] = {}
+            
+            if plugin_name not in self.plugin_configs['plugin_settings']:
+                self.plugin_configs['plugin_settings'][plugin_name] = {}
+            
+            self.plugin_configs['plugin_settings'][plugin_name][key] = value
+            logger.debug(f"[PLUGIN] 💾 Setting {key} updated for plugin {plugin_name}")
         
-        self.plugin_configs['plugin_settings'][plugin_name][key] = value
-        self._save_plugin_config()
+        return success
     
     def cleanup(self):
         """清理插件管理器"""
@@ -377,37 +397,36 @@ class PluginManager(QObject):
         
         logger.info("✨ Plugin manager cleanup completed")
     
-    def _load_plugin_configs(self):
-        """加载插件配置"""
-        config_file = self.plugins_dir / "plugin_config.json"
+    def _load_enabled_plugins_from_configs(self):
+        """从各个插件的config.json文件中加载启用状态"""
+        enabled_plugins = []
         
-        if config_file.exists():
-            try:
-                with open(config_file, 'r', encoding='utf-8') as f:
-                    content = f.read().strip()
-                    if content:  # 检查文件是否为空
-                        self.plugin_configs = json.loads(content)
-                    else:
-                        # 文件为空，使用默认配置
-                        self.plugin_configs = {
-                            'enabled_plugins': [],
-                            'plugin_settings': {}
-                        }
-                logger.debug("[PLUGIN] 📋 Plugin configurations loaded")
-            except Exception as e:
-                logger.error(f"[PLUGIN] ❌ Failed to load plugin config: {e} - {traceback.format_exc()}")
-                self.plugin_configs = {
-                    'enabled_plugins': [],
-                    'plugin_settings': {}
-                }
-        else:
-            self.plugin_configs = {
-                'enabled_plugins': [],
-                'plugin_settings': {}
-            }
-        
-        # 确保配置文件存在且格式正确
-        self._save_plugin_config()
+        try:
+            # 遍历插件目录
+            for plugin_dir in self.plugins_dir.iterdir():
+                if not plugin_dir.is_dir() or plugin_dir.name.startswith('_'):
+                    continue
+                
+                config_file = plugin_dir / "config.json"
+                if config_file.exists():
+                    try:
+                        with open(config_file, 'r', encoding='utf-8') as f:
+                            config_data = json.load(f)
+                        
+                        # 检查插件是否启用
+                        available_config = config_data.get('available_config', {})
+                        if available_config.get('enabled', False):
+                            enabled_plugins.append(plugin_dir.name)
+                            logger.debug(f"[PLUGIN] ✅ Plugin {plugin_dir.name} is enabled")
+                    
+                    except Exception as e:
+                        logger.warning(f"[PLUGIN] ⚠️ Failed to read config for {plugin_dir.name}: {e}")
+            
+            self.plugin_configs['enabled_plugins'] = enabled_plugins
+            logger.debug(f"[PLUGIN] 📋 Loaded {len(enabled_plugins)} enabled plugins from individual configs")
+            
+        except Exception as e:
+            logger.error(f"[PLUGIN] ❌ Failed to load enabled plugins from configs: {e} - {traceback.format_exc()}")
     
     def update_plugin_config(self, plugin_name: str, new_config: dict) -> bool:
         """更新插件配置到config.json文件"""
@@ -447,14 +466,3 @@ class PluginManager(QObject):
         except Exception as e:
             logger.error(f"[PLUGIN] ❌ Failed to update plugin config for {plugin_name}: {e} - {traceback.format_exc()}")
             return False
-    
-    def _save_plugin_config(self):
-        """保存插件配置"""
-        config_file = self.plugins_dir / "plugin_config.json"
-        
-        try:
-            with open(config_file, 'w', encoding='utf-8') as f:
-                json.dump(self.plugin_configs, f, indent=2, ensure_ascii=False)
-            logger.debug("[PLUGIN] 💾 Plugin configurations saved")
-        except Exception as e:
-            logger.error(f"[PLUGIN] ❌ Failed to save plugin config: {e} - {traceback.format_exc()}")

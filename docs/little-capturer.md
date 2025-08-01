@@ -1,5 +1,7 @@
-# LittleCapturer
+# LittleCapturer [DEPRECATED] [X]
 专业的截图工具插件，超越Windows系统自带截图功能，提供更多的截图选项和自定义功能。
+
+[X] 由于公司禁用OCR相关文件，该插件计划作废。
 
 ## Plugin说明
 Plugin应当有两种启动方式，可以通过HSBC LittleWorker的插件管理界面来启动，也可以直接通过plugin入口脚本（`LittleCapturer.py`）单独启动程序。

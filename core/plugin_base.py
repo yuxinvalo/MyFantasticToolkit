@@ -276,7 +276,12 @@ class PluginBase(QObject, ABC, metaclass=PluginMeta):
             try:
                 with open(config_file, 'r', encoding='utf-8') as f:
                     self._config = json.load(f)
-                logger.debug(f"📋 [Plugin] Config loaded for {self.get_name()}")
+                
+                # 从配置文件中读取enabled状态
+                available_config = self._config.get('available_config', {})
+                self._enabled = available_config.get('enabled', True)
+                
+                logger.debug(f"📋 [Plugin] Config loaded for {self.get_name()}, enabled: {self._enabled}")
             except Exception as e:
                 logger.error(f"❌ [Plugin] Failed to load config for {self.get_name()}: {e}")
                 self._config = {}
