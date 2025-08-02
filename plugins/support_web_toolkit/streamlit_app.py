@@ -9,7 +9,7 @@ import streamlit as st
 import os
 import json
 from pathlib import Path
-from common import load_config, load_translations, tr, init_language, update_language_config
+from common import load_config, load_translations, tr, init_language, update_language_config, apply_button_styles
 
 # 配置页面
 st.set_page_config(
@@ -21,6 +21,9 @@ st.set_page_config(
 
 # 多语言支持
 init_language()
+
+# 应用通用按钮样式
+apply_button_styles()
 
 # 语言切换
 with st.sidebar:

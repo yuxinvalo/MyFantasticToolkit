@@ -7,7 +7,7 @@ import streamlit as st
 import json
 from pathlib import Path
 from datetime import datetime
-from common import load_config, load_translations, tr, init_language, save_config
+from common import load_config, load_translations, tr, init_language, save_config, apply_button_styles
 
 # 页面配置
 st.set_page_config(
@@ -18,6 +18,9 @@ st.set_page_config(
 
 # 初始化语言设置
 init_language()
+
+# 应用通用按钮样式
+apply_button_styles()
 
 # 初始化暂存状态
 if 'stored_jsons' not in st.session_state:

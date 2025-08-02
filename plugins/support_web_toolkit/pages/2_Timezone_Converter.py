@@ -8,7 +8,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 import pytz
-from common import load_config, load_translations, tr, init_language
+from common import load_config, load_translations, tr, init_language, apply_button_styles
 
 # 页面配置
 st.set_page_config(
@@ -19,6 +19,9 @@ st.set_page_config(
 
 # 初始化语言设置
 init_language()
+
+# 应用通用按钮样式
+apply_button_styles()
 
 # 常用时区列表
 COMMON_TIMEZONES = {

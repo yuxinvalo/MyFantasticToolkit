@@ -64,6 +64,99 @@ def update_language_config(new_language: str):
     return save_config(config)
 
 
+def apply_button_styles():
+    """应用通用按钮样式"""
+    st.markdown("""
+    <style>
+    /* 主要操作按钮样式 - 使用Streamlit主题色 */
+    .stButton > button {
+        background: linear-gradient(135deg, #ff4b4b, #ff6b6b);
+        color: white !important;
+        border: 2px solid transparent;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 14px;
+        padding: 0.5rem 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(255, 75, 75, 0.3);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    
+    .stButton > button:hover {
+        background: linear-gradient(135deg, #ff2b2b, #ff4b4b);
+        box-shadow: 0 6px 20px rgba(255, 75, 75, 0.4);
+        transform: translateY(-2px);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .stButton > button:active {
+        transform: translateY(0px);
+        box-shadow: 0 2px 8px rgba(255, 75, 75, 0.3);
+    }
+    
+    /* 编辑快速链接按钮 - 紫色主题 */
+    .stButton > button:first-child {
+        background: linear-gradient(135deg, #667eea, #764ba2) !important;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3) !important;
+    }
+    
+    .stButton > button:first-child:hover {
+        background: linear-gradient(135deg, #5a6fd8, #6a4190) !important;
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4) !important;
+    }
+    
+    /* 下载按钮样式 - 蓝色主题 */
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #1f77b4, #4dabf7) !important;
+        color: white !important;
+        border: 2px solid transparent;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 14px;
+        padding: 0.5rem 1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(31, 119, 180, 0.3);
+        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    
+    .stDownloadButton > button:hover {
+        background: linear-gradient(135deg, #1864ab, #339af0) !important;
+        box-shadow: 0 6px 20px rgba(31, 119, 180, 0.4);
+        transform: translateY(-2px);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    /* 成功/保存按钮 - 绿色主题 */
+    .stButton > button[kind="primary"] {
+        background: linear-gradient(135deg, #51cf66, #69db7c) !important;
+        box-shadow: 0 4px 12px rgba(81, 207, 102, 0.3) !important;
+    }
+    
+    .stButton > button[kind="primary"]:hover {
+        background: linear-gradient(135deg, #40c057, #51cf66) !important;
+        box-shadow: 0 6px 20px rgba(81, 207, 102, 0.4) !important;
+    }
+    
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+        .stButton > button {
+            font-size: 12px;
+            padding: 0.4rem 0.8rem;
+        }
+    }
+    
+    /* 确保按钮文字可见性 */
+    .stButton > button span {
+        color: white !important;
+    }
+    
+    .stDownloadButton > button span {
+        color: white !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+
 def init_language():
     """初始化语言设置，从配置文件读取默认语言"""
     if 'language' not in st.session_state:
