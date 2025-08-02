@@ -12,7 +12,15 @@ import streamlit as st
 def load_config() -> dict:
     """加载配置文件"""
     try:
-        current_dir = Path(__file__).parent
+        import sys
+        # 获取当前插件目录（适配打包环境）
+        if getattr(sys, 'frozen', False):
+            # 打包后的环境
+            current_dir = Path(sys.executable).parent / "plugins" / "support_web_toolkit"
+        else:
+            # 开发环境
+            current_dir = Path(__file__).parent
+        
         config_file = current_dir / "config.json"
         if config_file.exists():
             with open(config_file, 'r', encoding='utf-8') as f:
@@ -25,7 +33,15 @@ def load_config() -> dict:
 def load_translations(lang_code: str) -> dict:
     """加载翻译文件"""
     try:
-        current_dir = Path(__file__).parent
+        import sys
+        # 获取当前插件目录（适配打包环境）
+        if getattr(sys, 'frozen', False):
+            # 打包后的环境
+            current_dir = Path(sys.executable).parent / "plugins" / "support_web_toolkit"
+        else:
+            # 开发环境
+            current_dir = Path(__file__).parent
+        
         trans_file = current_dir / "translations" / f"{lang_code}.json"
         if trans_file.exists():
             with open(trans_file, 'r', encoding='utf-8') as f:
@@ -47,7 +63,14 @@ def tr(key: str, lang_code: str = None) -> str:
 def save_config(config: dict):
     """保存配置文件"""
     try:
-        current_dir = Path(__file__).parent
+        import sys
+        # 获取当前插件目录（适配打包环境）
+        if getattr(sys, 'frozen', False):
+            # 打包后的环境
+            current_dir = Path(sys.executable).parent / "plugins" / "support_web_toolkit"
+        else:
+            # 开发环境
+            current_dir = Path(__file__).parent
         config_file = current_dir / "config.json"
         with open(config_file, 'w', encoding='utf-8') as f:
             json.dump(config, f, ensure_ascii=False, indent=2)

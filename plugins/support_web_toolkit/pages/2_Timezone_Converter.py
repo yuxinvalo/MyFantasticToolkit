@@ -5,7 +5,6 @@
 
 import streamlit as st
 import json
-import logging
 from datetime import datetime, timezone
 from pathlib import Path
 import pytz
@@ -62,7 +61,16 @@ def load_timezone_config():
 def save_timezone_config(source_timezone, target_timezones):
     """保存时区转换器配置"""
     try:
-        config_path = Path(__file__).parent.parent / 'config.json'
+        import sys
+        # 获取插件目录（适配打包环境）
+        if getattr(sys, 'frozen', False):
+            # 打包后的环境
+            plugin_dir = Path(sys.executable).parent / "plugins" / "support_web_toolkit"
+        else:
+            # 开发环境
+            plugin_dir = Path(__file__).parent.parent
+        
+        config_path = plugin_dir / 'config.json'
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
         

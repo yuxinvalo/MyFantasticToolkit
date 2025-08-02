@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import json
 from core.application import LittleWorkerApp
-from utils.logger import logger
+from utils.logger import logger, cleanup_old_logs
 
 
 def get_app_config():
@@ -75,6 +75,9 @@ def main():
                 app.setWindowIcon(QIcon(icon_path))
             
             logger.info("[STARTUP] Starting HSBC Little Worker Application...")
+            
+            # 清理旧日志文件
+            cleanup_old_logs()
             
             # 创建主应用程序实例
             little_worker = LittleWorkerApp()

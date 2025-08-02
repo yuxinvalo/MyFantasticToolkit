@@ -3,18 +3,16 @@
 ## 📋 目录
 
 - [概述](#概述)
-- [插件系统架构](#插件系统架构)
-- [开发环境准备](#开发环境准备)
-- [创建第一个插件](#创建第一个插件)
-- [插件基类详解](#插件基类详解)
+- [插件目录结构](#插件目录结构)
+- [开发环境](#开发环境)
+- [创建插件](#创建插件)
+- [插件基类方法](#插件基类方法)
 - [插件生命周期](#插件生命周期)
 - [UI界面开发](#ui界面开发)
-- [配置管理](#配置管理)
 - [国际化支持](#国际化支持)
 - [日志记录](#日志记录)
 - [插件注册与加载](#插件注册与加载)
 - [最佳实践](#最佳实践)
-- [常见问题](#常见问题)
 - [示例代码](#示例代码)
 
 ## 📖 概述
@@ -73,6 +71,10 @@ class Plugin(PluginBase):
         layout.addWidget(title)
         layout.addWidget(button)
         return widget
+    
+    def cleanup(self) -> None:
+        """清理插件资源"""
+        self.log_info("[插件] 🧹 清理完成")
 ```
 
 ### 2. 创建配置文件
@@ -122,6 +124,10 @@ def initialize(self) -> bool:
 def create_widget(self) -> QWidget:
     """创建插件界面组件"""
     pass
+
+def cleanup(self) -> None:
+    """清理插件资源，应用程序退出时调用"""
+    pass
 ```
 
 ### 常用方法
@@ -145,6 +151,87 @@ self.log_debug(message)            # 调试日志
 self.show_status_message(msg)      # 显示状态消息
 ```
 
+## 🔄 插件生命周期
+
+插件在应用程序运行期间会经历以下生命周期阶段：
+
+### 1. 发现阶段
+插件管理器扫描 `plugins/` 目录，发现所有包含 `Plugin` 类的插件模块。
+
+### 2. 加载阶段
+- 读取插件的 `config.json` 配置文件
+- 加载插件的翻译文件
+- 实例化插件类
+
+### 3. 初始化阶段
+调用插件的 `initialize()` 方法：
+```python
+def initialize(self) -> bool:
+    """初始化插件资源"""
+    # 初始化数据库连接、网络连接等
+    # 启动后台服务或定时器
+    # 注册事件监听器
+    self.log_info("[插件] 🚀 初始化完成")
+    return True  # 返回 True 表示初始化成功
+```
+
+### 4. 运行阶段
+- 插件界面通过 `create_widget()` 方法集成到主应用
+- 插件响应用户交互和系统事件
+- 插件可以动态更新配置和状态
+
+### 5. 清理阶段（重要）
+当应用程序退出时，插件管理器会调用每个插件的 `cleanup()` 方法：
+
+```python
+def cleanup(self) -> None:
+    """清理插件资源"""
+    try:
+        # 停止后台服务和定时器
+        if hasattr(self, 'timer') and self.timer:
+            self.timer.stop()
+            self.timer = None
+        
+        # 关闭网络连接
+        if hasattr(self, 'connection') and self.connection:
+            self.connection.close()
+            self.connection = None
+        
+        # 保存配置和状态
+        self.save_settings()
+        
+        # 释放其他资源
+        self.log_info("[插件] 🧹 资源清理完成")
+        
+    except Exception as e:
+        self.log_error(f"[插件] ❌ 清理失败: {e}")
+```
+
+### ⚠️ 重要说明
+
+**cleanup() 方法是必须实现的**，即使插件没有需要清理的资源，也应该提供一个空实现：
+
+```python
+def cleanup(self) -> None:
+    """清理插件资源"""
+    # 如果没有需要清理的资源，可以只记录日志
+    self.log_info("[插件] 🧹 清理完成")
+```
+
+**为什么 cleanup() 很重要？**
+- 🚫 **防止僵尸进程**：未正确清理的后台服务可能成为僵尸进程
+- 💾 **数据安全**：确保重要数据在应用退出前保存
+- 🔌 **资源释放**：释放网络连接、文件句柄等系统资源
+- 🧹 **内存管理**：避免内存泄漏和资源占用
+
+**常见需要清理的资源**：
+- 定时器 (QTimer)
+- 网络连接 (HTTP服务器、WebSocket等)
+- 文件句柄
+- 数据库连接
+- 后台线程
+- 临时文件
+
 ## 🎨 UI界面开发
 
 ### 基础界面示例
@@ -166,96 +253,6 @@ def _on_button_clicked(self):
     self.log_info("[插件] 🔘 按钮被点击")
     self.show_status_message(self.tr("plugin.my_plugin.success"))
 ```
-
-### 🔄 插件配置重构方案
-
-**当前架构问题**：
-- 所有插件配置集中在全局 `config/app_config.json` 中
-- 翻译文件都在 `resources/translations/` 全局目录
-- 插件缺乏独立性，难以独立分发和维护
-
-**重构目标**：
-- 🔧 **插件配置本地化**：每个插件目录包含自己的 `config.json`
-- 🌍 **翻译文件本地化**：每个插件包含 `translations/` 目录
-- 📦 **插件独立性**：插件可独立开发、测试、分发
-
-**新插件目录结构**：
-```
-plugins/
-├── demo_plugin/
-│   ├── __init__.py              # 插件主文件
-│   ├── config.json              # 插件配置
-│   ├── translations/             # 插件翻译
-│   │   ├── zh_CN.json
-│   │   └── en_US.json
-│   └── resources/               # 插件资源
-└── my_plugin/
-    ├── __init__.py
-    ├── config.json
-    └── translations/
-```
-
-**插件配置文件示例** (`plugins/{plugin_name}/config.json`)：
-```json
-{
-  "plugin_info": {
-    "name": "demo_plugin",
-    "display_name": "演示插件",
-    "description": "用于测试插件系统的演示插件",
-    "version": "1.0.0",
-    "author": "HSBC IT Support"
-  },
-  "available_config": {
-    "enabled": true,
-    "click_count": 0,
-    "auto_save": true,
-    "theme_color": "#007bff",
-    "hotkey": "Ctrl+Shift+D"
-  }
-}
-```
-
-**插件翻译文件示例** (`plugins/{plugin_name}/translations/zh_CN.json`)：
-```json
-{
-  "plugin.demo.name": "演示插件",
-  "plugin.demo.description": "用于测试插件系统的演示插件",
-  "plugin.demo.click_button": "点击我",
-  "plugin.demo.reset_button": "重置计数器"
-}
-```
-
-**重构后的插件基类使用**：
-```python
-class Plugin(PluginBase):
-    def __init__(self, app=None):
-        super().__init__(app)
-        # 插件会自动加载自己目录下的配置和翻译文件
-        
-        # 读取插件配置
-        self.click_count = self.get_setting('click_count', 0)
-        self.auto_save = self.get_setting('auto_save', True)
-        
-    def initialize(self) -> bool:
-        """初始化插件"""
-        self.log_info("[演示插件] 🚀 插件初始化完成")
-        return True
-        
-    def create_widget(self) -> QWidget:
-        """创建插件界面"""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        
-        # 使用插件专用翻译方法
-        title = QLabel(self.tr("plugin.demo.name"))
-        button = QPushButton(self.tr("plugin.demo.click_button"))
-        
-        layout.addWidget(title)
-        layout.addWidget(button)
-        return widget
-```
-
-> 📋 **详细重构方案**：参考 `docs/Plugin-Config-Refactor.md` 文档
 
 ## 🌍 国际化支持
 
@@ -288,6 +285,32 @@ my_plugin/
 }
 ```
 
+**更复杂的翻译文件示例**：
+
+**zh_CN.json**:
+```json
+{
+  "plugin.demo.name": "演示插件",
+  "plugin.demo.description": "用于测试插件系统的演示插件",
+  "plugin.demo.click_button": "点击我",
+  "plugin.demo.reset_button": "重置计数器",
+  "plugin.demo.count_display": "点击次数: {count}",
+  "plugin.demo.status_message": "操作成功完成"
+}
+```
+
+**en_US.json**:
+```json
+{
+  "plugin.demo.name": "Demo Plugin",
+  "plugin.demo.description": "A demo plugin for testing the plugin system",
+  "plugin.demo.click_button": "Click Me",
+  "plugin.demo.reset_button": "Reset Counter",
+  "plugin.demo.count_display": "Click Count: {count}",
+  "plugin.demo.status_message": "Operation completed successfully"
+}
+```
+
 ### 使用翻译
 ```python
 # 在界面中使用
@@ -295,7 +318,11 @@ title = QLabel(self.tr("plugin.my_plugin.title"))
 button = QPushButton(self.tr("plugin.my_plugin.button"))
 
 # 带参数的翻译
+count_label = QLabel(self.tr("plugin.demo.count_display", count=self.click_count))
 message = self.tr("plugin.my_plugin.error", error="网络错误")
+
+# 在状态消息中使用
+self.show_status_message(self.tr("plugin.demo.status_message"))
 ```
 
 ## 📝 日志记录
@@ -404,6 +431,10 @@ class Plugin(PluginBase):  # 必须继承自 PluginBase 或其子类
         layout.addWidget(title)
         layout.addWidget(button)
         return widget
+    
+    def cleanup(self) -> None:
+        """清理插件资源"""
+        self.log_info("[插件] 🧹 清理完成")
 ```
 
 ### 插件配置文件规范
@@ -449,6 +480,26 @@ class Plugin(PluginBase):  # 必须继承自 PluginBase 或其子类
   - 修改后，新选项会移动到列表末尾
 - `"keyboard"`: 键盘快捷键配置，在UI中显示为快捷键输入框
 
+**完整配置文件示例**：
+```json
+{
+  "plugin_info": {
+    "name": "demo_plugin",
+    "display_name": "演示插件",
+    "description": "用于测试插件系统的演示插件",
+    "version": "1.0.0",
+    "author": "HSBC IT Support"
+  },
+  "available_config": {
+    "enabled": true,
+    "click_count": 0,
+    "auto_save": true,
+    "theme_color": "#007bff",
+    "hotkey": "Ctrl+Shift+D"
+  }
+}
+```
+
 #### 🔄 自动生成机制
 
 如果插件目录下不存在 `config.json`，系统会尝试从插件类的元信息自动生成：
@@ -492,7 +543,9 @@ self.log_error(f"[插件] ❌ 连接失败: {e} - {traceback.format_exc()}")
 
 本指南介绍了HSBC Little Worker插件开发的核心要点：
 
-- **插件结构**: 继承PluginBase，实现initialize()和create_widget()方法
+- **插件结构**: 继承PluginBase，实现initialize()、create_widget()和cleanup()方法
+- **插件生命周期**: 理解插件的发现、加载、初始化、运行和清理阶段
+- **资源管理**: 正确实现cleanup()方法，防止僵尸进程和资源泄漏
 - **配置管理**: 使用规范的config.json格式，区分plugin_info（只读）和available_config（可配置）
 - **本地化支持**: 每个插件独立的translations翻译目录
 - **最佳实践**: 使用标签化日志、规范错误处理、支持多语言

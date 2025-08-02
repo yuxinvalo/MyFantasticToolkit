@@ -186,6 +186,9 @@ class MainWindow(QWidget):
         self.welcome_desc = QLabel(tr("welcome.description"))
         self.welcome_desc.setAlignment(Qt.AlignCenter)
         self.welcome_desc.setWordWrap(True)
+        self.welcome_desc.setTextFormat(Qt.RichText)  # 启用富文本格式
+        self.welcome_desc.setOpenExternalLinks(True)  # 允许打开外部链接
+        self.welcome_desc.setTextInteractionFlags(Qt.TextBrowserInteraction)  # 允许文本交互
         self.welcome_desc.setObjectName("welcome-description")
         layout.addWidget(self.welcome_desc)
         

@@ -3,7 +3,6 @@
 HSBC Little Worker - Support Web Toolkit Plugin
 """
 
-import os
 import subprocess
 import webbrowser
 import requests
@@ -27,12 +26,15 @@ class StreamlitServerThread(QThread):
     server_stopped = Signal()     # 服务停止信号
     server_error = Signal(str)    # 服务错误信号
     
-    def __init__(self, port: int, host: str = "localhost"):
+    def __init__(self, port: int, host: str = "localhost", log_info=None, log_error=None):
         super().__init__()
         self.port = port
         self.host = host
         self.process: Optional[subprocess.Popen] = None
         self.should_stop = False
+        # 使用传入的插件日志方法
+        self.log_info = log_info
+        self.log_error = log_error
     
     def run(self):
         """启动Streamlit服务"""
@@ -40,46 +42,102 @@ class StreamlitServerThread(QThread):
             import sys
             from pathlib import Path
             
-            # 获取当前插件目录
-            plugin_dir = Path(__file__).parent
+            # 获取当前插件目录（适配打包环境）
+            if getattr(sys, 'frozen', False):
+                # 打包后的环境
+                plugin_dir = Path(sys.executable).parent / "plugins" / "support_web_toolkit"
+            else:
+                # 开发环境
+                plugin_dir = Path(__file__).parent
+            
             app_file = plugin_dir / "streamlit_app.py"
             
             # 构建Streamlit启动命令
-            cmd = [
-                sys.executable, "-m", "streamlit", "run", 
-                str(app_file),
-                "--server.port", str(self.port),
-                "--server.address", self.host,
-                "--server.headless", "true",
-                "--browser.gatherUsageStats", "false"
-            ]
+            if getattr(sys, 'frozen', False):
+                # 打包环境：直接使用streamlit命令
+                cmd = [
+                    "streamlit", "run", 
+                    str(app_file),
+                    "--server.port", str(self.port),
+                    "--server.address", self.host,
+                    "--server.headless", "true",
+                    "--browser.gatherUsageStats", "false"
+                ]
+            else:
+                # 开发环境：使用Python模块方式
+                cmd = [
+                    sys.executable, "-m", "streamlit", "run", 
+                    str(app_file),
+                    "--server.port", str(self.port),
+                    "--server.address", self.host,
+                    "--server.headless", "true",
+                    "--browser.gatherUsageStats", "false"
+                ]
             
             # 启动Streamlit服务
-            self.process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                cwd=str(plugin_dir)
-            )
-            
-            # 等待服务启动
-            time.sleep(3)
-            
-            if not self.should_stop and self.process and self.process.poll() is None:
-                url = f"http://{self.host}:{self.port}"
-                self.server_started.emit(url)
+            try:
+                if self.log_info:
+                    self.log_info(f"🚀 Starting Streamlit with command: {' '.join(cmd)}")
+                    self.log_info(f"📁 Working directory: {plugin_dir}")
+                    self.log_info(f"📄 App file: {app_file}")
                 
-                # 保持线程运行，监控进程状态
-                while not self.should_stop and self.process and self.process.poll() is None:
-                    time.sleep(1)
-                    
-                # 如果进程意外退出
-                if self.process and self.process.poll() is not None and not self.should_stop:
-                    stderr_output = self.process.stderr.read().decode() if self.process.stderr else ""
-                    self.server_error.emit(f"Streamlit process exited unexpectedly: {stderr_output}")
-            elif self.process and self.process.poll() is not None:
+                self.process = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    cwd=str(plugin_dir)
+                )
+            except Exception as e:
+                if self.log_error:
+                    self.log_error(f"❌ Failed to start subprocess: {e}")
+                self.server_error.emit(f"Failed to start subprocess: {e}")
+                return
+            
+            # 等待服务启动并检查可用性
+            url = f"http://{self.host}:{self.port}"
+            max_attempts = 30  # 最多等待30秒
+            attempt = 0
+            
+            while attempt < max_attempts and not self.should_stop and self.process and self.process.poll() is None:
+                try:
+                    import requests
+                    response = requests.get(url, timeout=2)
+                    if response.status_code == 200:
+                        # 服务启动成功
+                        if self.log_info:
+                            self.log_info(f"✅ Streamlit service is ready at {url}")
+                        self.server_started.emit(url)
+                        break
+                except Exception:
+                    # 服务还未准备好，继续等待
+                    pass
+                
+                time.sleep(1)
+                attempt += 1
+            
+            # 检查是否启动成功
+            if attempt >= max_attempts:
+                if self.log_error:
+                    self.log_error(f"❌ Streamlit service failed to start within {max_attempts} seconds")
+                self.server_error.emit(f"Service failed to start within {max_attempts} seconds")
+                return
+            elif not (self.process and self.process.poll() is None):
                 stderr_output = self.process.stderr.read().decode() if self.process.stderr else ""
-                self.server_error.emit(f"Failed to start Streamlit: {stderr_output}")
+                if self.log_error:
+                    self.log_error(f"❌ Streamlit process exited during startup: {stderr_output}")
+                self.server_error.emit(f"Process exited during startup: {stderr_output}")
+                return
+                
+            # 保持线程运行，监控进程状态
+            while not self.should_stop and self.process and self.process.poll() is None:
+                time.sleep(1)
+                
+            # 如果进程意外退出
+            if self.process and self.process.poll() is not None and not self.should_stop:
+                stderr_output = self.process.stderr.read().decode() if self.process.stderr else ""
+                if self.log_error:
+                    self.log_error(f"❌ Streamlit process exited unexpectedly: {stderr_output}")
+                self.server_error.emit(f"Streamlit process exited unexpectedly: {stderr_output}")
                     
         except Exception as e:
             self.server_error.emit(str(e))
@@ -113,7 +171,7 @@ class Plugin(PluginBase):
     
     # 插件元信息
     NAME = "support_web_toolkit"
-    DISPLAY_NAME = "Finance IT Support Web Toolkit"
+    DISPLAY_NAME = "Support Web Toolkit"
     DESCRIPTION = "IT Support Web Toolkit with common utilities"
     VERSION = "1.0.0"
     AUTHOR = "Tearsyu"
@@ -400,7 +458,7 @@ class Plugin(PluginBase):
         self.log_text.append(f"[INFO] {self.tr('plugin.web_toolkit.server_starting')}")
         
         # 启动服务器线程
-        self.server_thread = StreamlitServerThread(self.port, self.host)
+        self.server_thread = StreamlitServerThread(self.port, self.host, self.log_info, self.log_error)
         self.server_thread.server_started.connect(self._on_server_started)
         self.server_thread.server_stopped.connect(self._on_server_stopped)
         self.server_thread.server_error.connect(self._on_server_error)

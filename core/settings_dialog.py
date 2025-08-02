@@ -57,7 +57,6 @@ class SettingsDialog(QDialog):
         main_layout.addWidget(self.tab_widget)
         
         # 创建各个设置页面
-        self._create_general_tab()
         self._create_appearance_tab()
         self._create_language_tab()
         
@@ -65,27 +64,7 @@ class SettingsDialog(QDialog):
         button_layout = self._create_button_area()
         main_layout.addLayout(button_layout)
     
-    def _create_general_tab(self):
-        """创建常规设置标签页"""
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        layout.setContentsMargins(15, 15, 15, 15)
-        layout.setSpacing(15)
-        
-        # 启动设置组
-        startup_group = QGroupBox(tr("settings.startup"))
-        startup_layout = QVBoxLayout(startup_group)
-        
-        self.auto_start_checkbox = QCheckBox(tr("settings.auto_start"))
-        self.minimize_to_tray_checkbox = QCheckBox(tr("settings.minimize_to_tray"))
-        
-        startup_layout.addWidget(self.auto_start_checkbox)
-        startup_layout.addWidget(self.minimize_to_tray_checkbox)
-        
-        layout.addWidget(startup_group)
-        layout.addStretch()
-        
-        self.tab_widget.addTab(tab, tr("settings.general"))
+
     
     def _create_appearance_tab(self):
         """创建外观设置标签页"""
@@ -94,20 +73,15 @@ class SettingsDialog(QDialog):
         layout.setContentsMargins(15, 15, 15, 15)
         layout.setSpacing(15)
         
-        # 主题设置组
-        theme_group = QGroupBox(tr("settings.theme"))
-        theme_layout = QFormLayout(theme_group)
-        
-        self.theme_combo = QComboBox()
-        self.theme_combo.addItem(tr("settings.theme.light"), "light")
-        self.theme_combo.addItem(tr("settings.theme.dark"), "dark")
-        theme_layout.addRow(tr("settings.theme") + ":", self.theme_combo)
+        # 外观设置组
+        appearance_group = QGroupBox(tr("settings.appearance"))
+        appearance_layout = QFormLayout(appearance_group)
         
         # 字体大小设置
         self.font_size_spinbox = QSpinBox()
         self.font_size_spinbox.setRange(8, 24)
         self.font_size_spinbox.setValue(11)
-        theme_layout.addRow(tr("settings.font_size") + ":", self.font_size_spinbox)
+        appearance_layout.addRow(tr("settings.font_size") + ":", self.font_size_spinbox)
         
         # 窗口透明度设置
         self.opacity_slider = QSlider(Qt.Horizontal)
@@ -119,9 +93,9 @@ class SettingsDialog(QDialog):
         opacity_layout.addWidget(self.opacity_slider)
         opacity_layout.addWidget(self.opacity_label)
         
-        theme_layout.addRow(tr("settings.opacity") + ":", opacity_layout)
+        appearance_layout.addRow(tr("settings.opacity") + ":", opacity_layout)
         
-        layout.addWidget(theme_group)
+        layout.addWidget(appearance_group)
         layout.addStretch()
         
         self.tab_widget.addTab(tab, tr("settings.appearance"))
@@ -246,13 +220,6 @@ class SettingsDialog(QDialog):
             # 获取UI设置
             ui_settings = config.get("ui_settings", {})
             
-            # 加载主题设置
-            theme = ui_settings.get("theme", "light")
-            for i in range(self.theme_combo.count()):
-                if self.theme_combo.itemData(i) == theme:
-                    self.theme_combo.setCurrentIndex(i)
-                    break
-            
             # 加载字体大小设置
             font_size = ui_settings.get("font_size", 11)
             self.font_size_spinbox.setValue(font_size)
@@ -269,10 +236,7 @@ class SettingsDialog(QDialog):
                     self.language_combo.setCurrentIndex(i)
                     break
             
-            # 加载启动设置
-            startup_settings = config.get("startup_settings", {})
-            self.auto_start_checkbox.setChecked(startup_settings.get("auto_start", False))
-            self.minimize_to_tray_checkbox.setChecked(startup_settings.get("minimize_to_tray", True))
+
             
             logger.debug("[SETTINGS] Settings loaded successfully")
             
@@ -286,11 +250,9 @@ class SettingsDialog(QDialog):
             # 读取现有配置
             config = self._load_config()
             
-            # 确保ui_settings和startup_settings存在
+            # 确保ui_settings存在
             if "ui_settings" not in config:
                 config["ui_settings"] = {}
-            if "startup_settings" not in config:
-                config["startup_settings"] = {}
             
             # 应用语言设置
             selected_language = self.language_combo.currentData()
@@ -298,12 +260,6 @@ class SettingsDialog(QDialog):
                 self.i18n_manager.set_language(selected_language)
                 config["ui_settings"]["language"] = selected_language
                 logger.info(f"[SETTINGS] 🌐 Language updated: {selected_language}")
-            
-            # 应用主题设置
-            selected_theme = self.theme_combo.currentData()
-            if selected_theme:
-                config["ui_settings"]["theme"] = selected_theme
-                logger.info(f"[SETTINGS] 🎨 Theme updated: {selected_theme}")
             
             # 应用字体大小设置
             font_size = self.font_size_spinbox.value()
@@ -317,9 +273,7 @@ class SettingsDialog(QDialog):
                 self.parent().setWindowOpacity(opacity / 100.0)
             logger.info(f"[SETTINGS] 🔍 Window opacity updated: {opacity}%")
             
-            # 应用启动设置
-            config["startup_settings"]["auto_start"] = self.auto_start_checkbox.isChecked()
-            config["startup_settings"]["minimize_to_tray"] = self.minimize_to_tray_checkbox.isChecked()
+
             
             # 保存配置到文件
             if self._save_config(config):
@@ -335,12 +289,10 @@ class SettingsDialog(QDialog):
     def _reset_settings(self):
         """重置设置为默认值"""
         # 重置为默认值
-        self.theme_combo.setCurrentIndex(0)  # 默认主题
         self.font_size_spinbox.setValue(11)  # 默认字体大小
         self.opacity_slider.setValue(100)    # 默认透明度
         self.language_combo.setCurrentIndex(0)  # 默认语言
-        self.auto_start_checkbox.setChecked(False)  # 默认不自动启动
-        self.minimize_to_tray_checkbox.setChecked(True)  # 默认最小化到托盘
+
         
         logger.info("[SETTINGS] 🔄 Settings reset to default values")
     
@@ -366,9 +318,8 @@ class SettingsDialog(QDialog):
         self.setWindowTitle(tr("settings.title"))
         
         # 更新标签页标题
-        self.tab_widget.setTabText(0, tr("settings.general"))
-        self.tab_widget.setTabText(1, tr("settings.appearance"))
-        self.tab_widget.setTabText(2, tr("settings.language"))
+        self.tab_widget.setTabText(0, tr("settings.appearance"))
+        self.tab_widget.setTabText(1, tr("settings.language"))
         
         # 更新按钮文本
         self.reset_button.setText(tr("settings.reset"))

@@ -3,7 +3,6 @@
 HSBC Little Worker - 插件基类
 """
 
-import os
 import sys
 import json
 from abc import ABC, abstractmethod
@@ -489,9 +488,15 @@ class PluginBase(QObject, ABC, metaclass=PluginMeta):
             # 如果上述方法失败，尝试通过插件名称构建路径
             plugin_name = self.get_name()
             if plugin_name:
-                # 假设插件位于项目根目录的plugins文件夹下
-                current_file = Path(__file__).resolve()
-                project_root = current_file.parent.parent  # 从core目录回到项目根目录
+                # 获取项目根目录，支持打包后的环境
+                if getattr(sys, 'frozen', False):
+                    # 打包后的环境
+                    project_root = Path(sys.executable).parent
+                else:
+                    # 开发环境
+                    current_file = Path(__file__).resolve()
+                    project_root = current_file.parent.parent  # 从core目录回到项目根目录
+                
                 plugin_dir = project_root / "plugins" / plugin_name
                 if plugin_dir.exists():
                     logger.debug(f"[PLUGIN] 🔍 Found plugin directory via name: {plugin_dir}")

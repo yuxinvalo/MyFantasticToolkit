@@ -5,8 +5,6 @@ HSBC Little Worker - 插件管理器对话框
 
 import os
 import traceback
-import json
-from typing import List, Dict, Any
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QWidget, QScrollArea,

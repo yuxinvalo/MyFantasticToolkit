@@ -33,7 +33,7 @@
   "tab.welcome": "欢迎",
   
   "welcome.title": "欢迎使用 HSBC Little Worker",
-  "welcome.description": "这是一个插件化的个人工作工具集合，旨在提高日常工作效率。\n\n主要功能包括：\n• 截图工具 - 快速截图、编辑和分享\n• 工作日志 - 记录和管理工作内容\n• 更多插件功能等待您的探索...\n\n请从左侧插件列表中选择要使用的功能。",
+  "welcome.description": "欢迎使用 HSBC Little Worker！这是一个可通过插件扩展的个人工作工具集合。<br><br>您可以开发自定义插件来满足您的需求。插件系统允许您：<br>• 为您的工作流程创建专用工具<br>• 通过自定义功能扩展应用<br>• 与您的团队分享插件<br><br>更多信息：<br>• 项目仓库：<a href='https://github.com/yuxinvalo/MyFantasticToolkit'>https://github.com/yuxinvalo/MyFantasticToolkit</a><br>• 插件开发指南：<a href='https://github.com/yuxinvalo/MyFantasticToolkit/blob/main/docs/plugin_development.md'>https://github.com/yuxinvalo/MyFantasticToolkit/blob/main/docs/plugin_development.md</a><br><br>祝您工作愉快！<br><br>作者：Tearsyu &lt;yu.xin.shi@hsbc.com&gt;",
   
   "plugins.available": "可用插件",
   "plugins.none_available": "暂无可用插件",

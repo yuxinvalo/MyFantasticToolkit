@@ -35,7 +35,7 @@ class PluginManager(QObject):
         self.app = app
         self.plugins: Dict[str, PluginBase] = {}  # 已加载的插件实例
         # 插件目录路径
-        self.plugins_dir = Path(__file__).parent.parent / "plugins"
+        self.plugins_dir = self._get_plugins_dir()
         
         # 确保目录存在
         self.plugins_dir.mkdir(exist_ok=True)
@@ -46,6 +46,25 @@ class PluginManager(QObject):
             'plugin_settings': {}
         }
         self._load_enabled_plugins_from_configs()
+    
+    def _get_plugins_dir(self) -> Path:
+        """获取插件目录路径，支持打包后的环境"""
+        import sys
+        
+        if getattr(sys, 'frozen', False):
+            # 打包后的环境
+            base_path = Path(sys.executable).parent
+            logger.info(f"[PLUGIN] 📦 Packaged environment detected, base path: {base_path}")
+        else:
+            # 开发环境
+            base_path = Path(__file__).parent.parent
+            logger.info(f"[PLUGIN] 🔧 Development environment detected, base path: {base_path}")
+        
+        plugins_path = base_path / "plugins"
+        logger.info(f"[PLUGIN] 📁 Plugin directory path: {plugins_path}")
+        logger.info(f"[PLUGIN] 📂 Plugin directory exists: {plugins_path.exists()}")
+        
+        return plugins_path
 
     def discover_plugins(self) -> List[Dict[str, Any]]:
         """发现可用插件"""

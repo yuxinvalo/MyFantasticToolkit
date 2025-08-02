@@ -33,7 +33,7 @@
   "tab.welcome": "Welcome",
   
   "welcome.title": "Welcome to HSBC Little Worker",
-  "welcome.description": "This is a plugin-based personal work tools collection designed to improve daily work efficiency.\n\nMain features include:\n• Screenshot Tool - Quick capture, edit and share\n• Work Notes - Record and manage work content\n• More plugin features waiting for your exploration...\n\nPlease select the function you want to use from the plugin list on the left.",
+  "welcome.description": "Welcome to HSBC Little Worker! This application is a collection of personal work tools that can be extended through plugins.<br><br>You can develop custom plugins to suit your needs. The plugin system allows you to:<br>• Create specialized tools for your workflow<br>• Extend functionality with custom features<br>• Share plugins with your team<br><br>For more information:<br>• Project Repository: <a href='https://github.com/yuxinvalo/MyFantasticToolkit'>https://github.com/yuxinvalo/MyFantasticToolkit</a><br>• Plugin Development Guide: <a href='https://github.com/yuxinvalo/MyFantasticToolkit/blob/main/docs/plugin_development.md'>https://github.com/yuxinvalo/MyFantasticToolkit/blob/main/docs/plugin_development.md</a><br><br>Enjoy your work!<br><br>Author: Tearsyu &lt;yu.xin.shi@hsbc.com&gt;",
   
   "plugins.available": "Available Plugins",
   "plugins.none_available": "No plugins available",

@@ -5,7 +5,6 @@ HSBC Little Worker - 主应用程序类
 
 import os
 import json
-from warnings import deprecated
 import traceback
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
@@ -56,11 +55,7 @@ class LittleWorkerApp(QMainWindow):
     def load_language_settings(self):
         """加载语言设置"""
         try:
-            config_path = os.path.join(
-                os.path.dirname(os.path.dirname(__file__)), 
-                "config", 
-                "app_config.json"
-            )
+            config_path = self._get_config_path()
             
             if os.path.exists(config_path):
                 with open(config_path, 'r', encoding='utf-8') as f:
@@ -77,11 +72,7 @@ class LittleWorkerApp(QMainWindow):
     def _load_ui_settings(self):
         """加载并应用UI设置"""
         try:
-            config_path = os.path.join(
-                os.path.dirname(os.path.dirname(__file__)), 
-                "config", 
-                "app_config.json"
-            )
+            config_path = self._get_config_path()
             
             if not os.path.exists(config_path):
                 logger.warning("[SETTINGS] ⚠️ Config file not found, using default UI settings")
@@ -162,11 +153,7 @@ class LittleWorkerApp(QMainWindow):
     def _get_app_name(self):
         """从配置文件获取应用名称"""
         try:
-            config_path = os.path.join(
-                os.path.dirname(os.path.dirname(__file__)), 
-                "config", 
-                "app_config.json"
-            )
+            config_path = self._get_config_path()
             
             if os.path.exists(config_path):
                 with open(config_path, 'r', encoding='utf-8') as f:
@@ -287,11 +274,7 @@ class LittleWorkerApp(QMainWindow):
     def _save_language_settings(self, language_code):
         """保存语言设置"""
         try:
-            config_path = os.path.join(
-                os.path.dirname(os.path.dirname(__file__)), 
-                "config", 
-                "app_config.json"
-            )
+            config_path = self._get_config_path()
             
             config = {}
             if os.path.exists(config_path):
@@ -373,10 +356,12 @@ class LittleWorkerApp(QMainWindow):
             # 创建系统托盘图标
             self.system_tray = QSystemTrayIcon(self)
             
-            # 设置托盘图标
-            icon_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "icon.svg")
-            if os.path.exists(icon_path):
+            # 设置托盘图标 - 支持打包环境
+            icon_path = self._get_resource_path("icon.svg")
+            if icon_path and os.path.exists(icon_path):
                 self.system_tray.setIcon(QIcon(icon_path))
+            else:
+                logger.warning(f"[SYSTEM] ⚠️ System tray icon not found: {icon_path}")
             
             # 创建托盘菜单
             tray_menu = QMenu()
@@ -403,6 +388,36 @@ class LittleWorkerApp(QMainWindow):
             
         except Exception as e:
             logger.error(f"[SYSTEM] ❌ System tray initialization failed: {e} - {traceback.format_exc()}")
+    
+    def _get_resource_path(self, filename):
+        """获取资源文件路径，支持打包后的环境"""
+        import sys
+        from pathlib import Path
+        
+        if getattr(sys, 'frozen', False):
+            # 打包后的环境：使用临时目录中的资源
+            base_path = Path(sys._MEIPASS)
+        else:
+            # 开发环境：使用相对路径
+            base_path = Path(__file__).parent.parent
+        
+        resource_path = base_path / "resources" / filename
+        return str(resource_path)
+    
+    def _get_config_path(self, filename="app_config.json"):
+        """获取配置文件路径，支持打包后的环境"""
+        import sys
+        from pathlib import Path
+        
+        if getattr(sys, 'frozen', False):
+            # 打包后的环境：使用临时目录中的配置
+            base_path = Path(sys._MEIPASS)
+        else:
+            # 开发环境：使用相对路径
+            base_path = Path(__file__).parent.parent
+        
+        config_path = base_path / "config" / filename
+        return str(config_path)
     
     def _on_plugin_loaded(self, plugin_name):
         """插件加载完成回调"""

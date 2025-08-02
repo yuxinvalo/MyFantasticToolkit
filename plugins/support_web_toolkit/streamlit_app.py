@@ -4,11 +4,7 @@ HSBC Little Worker - Support Web Toolkit Streamlit App
 IT支持Web工具包主页
 """
 
-import traceback
 import streamlit as st
-import os
-import json
-from pathlib import Path
 from common import load_config, load_translations, tr, init_language, update_language_config, apply_button_styles
 
 # 配置页面
