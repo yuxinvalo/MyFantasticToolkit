@@ -43,5 +43,12 @@
       }
     ]
   },
-  "web_language": "en_US"
+  "timezone_converter": {
+    "source_timezone": "Asia/Shanghai",
+    "target_timezones": [
+      "Europe/London",
+      "Asia/Kolkata"
+    ]
+  },
+  "web_language": "zh_CN"
 }

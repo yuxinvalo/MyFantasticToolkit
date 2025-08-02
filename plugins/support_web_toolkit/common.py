@@ -157,6 +157,35 @@ def apply_button_styles():
     """, unsafe_allow_html=True)
 
 
+def render_source_time_card(label: str, time_str: str):
+    """渲染源时间卡片样式"""
+    return f"""
+    <div style="
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 12px;
+        margin: 10px 0;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        border-left: 4px solid #4CAF50;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    ">
+        <div style="
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+            font-weight: 500;
+        ">🕐 {label}</div>
+        <div style="
+            font-size: 18px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 1px;
+        ">{time_str}</div>
+    </div>
+    """
+
+
 def init_language():
     """初始化语言设置，从配置文件读取默认语言"""
     if 'language' not in st.session_state:
