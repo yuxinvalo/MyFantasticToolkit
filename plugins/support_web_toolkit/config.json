@@ -14,5 +14,34 @@
       "0.0.0.0",
       "0.0.0.0"
     ]
-  }
+  },
+  "quick_links": {
+    "FCDP Knowledge": [
+      {
+        "name": "Bilibili",
+        "url": "https://www.bilibili.com/"
+      },
+      {
+        "name": "Douyu",
+        "url": "https://www.douyu.com/"
+      }
+    ],
+    "Service Now": [
+      {
+        "name": "Service Now",
+        "url": "https://service-now.com/"
+      },
+      {
+        "name": "Test Link",
+        "url": "https://ytshorts.savetube.me/zh/download?from=zh%2Fyoutube-video-downloader-3#google_vignette"
+      }
+    ],
+    "HSBC Support": [
+      {
+        "name": "HSBC Support",
+        "url": "https://hsbc.support.com/"
+      }
+    ]
+  },
+  "web_language": "en_US"
 }

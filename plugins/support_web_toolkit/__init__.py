@@ -37,20 +37,49 @@ class StreamlitServerThread(QThread):
     def run(self):
         """启动Streamlit服务"""
         try:
-            # 这里暂时模拟启动过程，实际实现时需要启动真正的Streamlit应用
-            # cmd = ["streamlit", "run", "streamlit_app.py", "--server.port", str(self.port), "--server.address", self.host]
-            # self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            import sys
+            from pathlib import Path
             
-            # 模拟启动延迟
-            time.sleep(2)
+            # 获取当前插件目录
+            plugin_dir = Path(__file__).parent
+            app_file = plugin_dir / "streamlit_app.py"
             
-            if not self.should_stop:
+            # 构建Streamlit启动命令
+            cmd = [
+                sys.executable, "-m", "streamlit", "run", 
+                str(app_file),
+                "--server.port", str(self.port),
+                "--server.address", self.host,
+                "--server.headless", "true",
+                "--browser.gatherUsageStats", "false"
+            ]
+            
+            # 启动Streamlit服务
+            self.process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=str(plugin_dir)
+            )
+            
+            # 等待服务启动
+            time.sleep(3)
+            
+            if not self.should_stop and self.process and self.process.poll() is None:
                 url = f"http://{self.host}:{self.port}"
                 self.server_started.emit(url)
                 
-                # 保持线程运行
-                while not self.should_stop:
+                # 保持线程运行，监控进程状态
+                while not self.should_stop and self.process and self.process.poll() is None:
                     time.sleep(1)
+                    
+                # 如果进程意外退出
+                if self.process and self.process.poll() is not None and not self.should_stop:
+                    stderr_output = self.process.stderr.read().decode() if self.process.stderr else ""
+                    self.server_error.emit(f"Streamlit process exited unexpectedly: {stderr_output}")
+            elif self.process and self.process.poll() is not None:
+                stderr_output = self.process.stderr.read().decode() if self.process.stderr else ""
+                self.server_error.emit(f"Failed to start Streamlit: {stderr_output}")
                     
         except Exception as e:
             self.server_error.emit(str(e))
@@ -59,10 +88,24 @@ class StreamlitServerThread(QThread):
         """停止服务"""
         self.should_stop = True
         if self.process:
-            self.process.terminate()
-            self.process = None
+            try:
+                # 首先尝试优雅终止
+                self.process.terminate()
+                # 等待进程优雅退出
+                try:
+                    self.process.wait(timeout=10)  # 增加等待时间到10秒
+                except subprocess.TimeoutExpired:
+                    # 如果优雅退出失败，强制终止
+                    self.process.kill()
+                    self.process.wait(timeout=5)  # 等待强制终止完成
+            except Exception as e:
+                # 如果终止过程出错，记录错误但继续清理
+                print(f"Error stopping process: {e}")
+            finally:
+                self.process = None
+        
+        # 发送停止信号
         self.server_stopped.emit()
-        self.quit()
 
 
 class Plugin(PluginBase):
@@ -81,6 +124,7 @@ class Plugin(PluginBase):
         self.server_thread: Optional[StreamlitServerThread] = None
         self.server_status = "stopped"  # stopped, starting, running, stopping
         self.server_url = ""
+        self.pending_tool_path = None  # 待打开的工具路径
         
         # 连接语言变更信号
         self.i18n_manager.language_changed.connect(self.on_language_changed)
@@ -89,12 +133,12 @@ class Plugin(PluginBase):
         # 状态检查定时器
         self.status_timer = QTimer()
         self.status_timer.timeout.connect(self._check_server_status)
-        self.status_timer.start(5000)  # 每5秒检查一次
+        # 不在初始化时启动定时器，只在服务运行时启动
     
     def initialize(self) -> bool:
         """初始化插件"""
         try:
-            self.log_info("[Web Toolkit] 🚀 插件初始化开始")
+            self.log_info("[Web Toolkit] 🚀 Plugin initialization started")
             
             # 读取配置
             self.port = self.get_setting('port', 8501)
@@ -103,11 +147,11 @@ class Plugin(PluginBase):
                 self.host = self.host[-1]  # 取最后一个作为默认值
             
             self._initialized = True
-            self.log_info("[Web Toolkit] ✅ 插件初始化完成")
+            self.log_info("[Web Toolkit] ✅ Plugin initialization completed")
             return True
             
         except Exception as e:
-            self.log_error(f"[Web Toolkit] ❌ 插件初始化失败: {e}")
+            self.log_error(f"[Web Toolkit] ❌ Plugin initialization failed: {e}")
             return False
     
     def create_widget(self) -> QWidget:
@@ -144,7 +188,7 @@ class Plugin(PluginBase):
             self.tr("plugin.web_toolkit.json_formatter"),
             self.tr("plugin.web_toolkit.json_formatter_desc"),
             "#28a745",
-            lambda: self._open_tool("/json-formatter")
+            lambda: self._open_tool("/JSON_Formatter")
         )
         tools_layout.addWidget(self.json_button, 0, 0)
         
@@ -153,7 +197,7 @@ class Plugin(PluginBase):
             self.tr("plugin.web_toolkit.timezone_converter"),
             self.tr("plugin.web_toolkit.timezone_converter_desc"),
             "#007bff",
-            lambda: self._open_tool("/timezone-converter")
+            lambda: self._open_tool("/Timezone_Converter")
         )
         tools_layout.addWidget(self.timezone_button, 0, 1)
         
@@ -162,7 +206,7 @@ class Plugin(PluginBase):
             self.tr("plugin.web_toolkit.markdown_editor"),
             self.tr("plugin.web_toolkit.markdown_editor_desc"),
             "#6f42c1",
-            lambda: self._open_tool("/markdown-editor")
+            lambda: self._open_tool("/Markdown_Editor")
         )
         tools_layout.addWidget(self.markdown_button, 1, 0, 1, 2)
         
@@ -181,7 +225,10 @@ class Plugin(PluginBase):
         status_info_layout.addStretch()
         
         self.url_label = QLabel("")
-        self.url_label.setStyleSheet("color: #6c757d; font-size: 12px;")
+        self.url_label.setStyleSheet("color: #6c757d; font-size: 12px; padding: 2px; border-radius: 2px;")
+        self.url_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.url_label.setCursor(Qt.PointingHandCursor)
+        self.url_label.mouseDoubleClickEvent = self._copy_url_to_clipboard
         status_info_layout.addWidget(self.url_label)
         
         status_layout.addLayout(status_info_layout)
@@ -230,21 +277,7 @@ class Plugin(PluginBase):
         )
         control_layout.addWidget(self.stop_button)
         
-        self.refresh_button = QPushButton(self.tr("plugin.web_toolkit.refresh_status"))
-        self.refresh_button.clicked.connect(self._check_server_status)
-        self.refresh_button.setStyleSheet(
-            "QPushButton {"
-            "    background-color: #6c757d;"
-            "    color: white;"
-            "    border: none;"
-            "    padding: 8px 16px;"
-            "    border-radius: 4px;"
-            "}"
-            "QPushButton:hover {"
-            "    background-color: #545b62;"
-            "}"
-        )
-        control_layout.addWidget(self.refresh_button)
+        # Refresh button removed as requested
         
         control_layout.addStretch()
         
@@ -300,7 +333,6 @@ class Plugin(PluginBase):
         # 将widget设置为滚动区域的内容
         scroll_area.setWidget(widget)
         
-        self.log_info("[Web Toolkit] ✅ UI界面创建完成")
         
         return scroll_area
     
@@ -346,10 +378,25 @@ class Plugin(PluginBase):
         if self.server_status in ["running", "starting"]:
             return
         
+        # 如果正在停止，等待停止完成
+        if self.server_status == "stopping":
+            self.log_warning("[Web Toolkit] ⚠️ Server is stopping, please try again later")
+            self.log_text.append("[WARNING] Server is stopping, please try again later")
+            return
+        
+        # 清理之前的线程实例
+        if self.server_thread:
+            if self.server_thread.isRunning():
+                self.log_warning("[Web Toolkit] ⚠️ Detected running service thread, cleaning up...")
+                self.server_thread.stop_server()
+                self.server_thread.wait(3000)  # 等待3秒
+            self.server_thread.deleteLater()
+            self.server_thread = None
+        
         self.server_status = "starting"
         self._update_status_ui()
         
-        self.log_info("[Web Toolkit] 🚀 正在启动Streamlit服务...")
+        self.log_info("[Web Toolkit] 🚀 Starting Streamlit service...")
         self.log_text.append(f"[INFO] {self.tr('plugin.web_toolkit.server_starting')}")
         
         # 启动服务器线程
@@ -367,11 +414,32 @@ class Plugin(PluginBase):
         self.server_status = "stopping"
         self._update_status_ui()
         
-        self.log_info("[Web Toolkit] 🛑 正在停止Streamlit服务...")
+        self.log_info("[Web Toolkit] 🛑 Stopping Streamlit service...")
         self.log_text.append(f"[INFO] {self.tr('plugin.web_toolkit.server_stopping')}")
         
         if self.server_thread:
+            # 停止服务器
             self.server_thread.stop_server()
+            
+            # 异步等待线程结束，避免阻塞UI
+            QTimer.singleShot(100, self._wait_for_thread_finish)
+    
+    def _wait_for_thread_finish(self):
+        """等待线程结束"""
+        if self.server_thread and self.server_thread.isRunning():
+            # 如果线程还在运行，继续等待
+            if not self.server_thread.wait(1000):  # 等待1秒
+                # 如果1秒后还没结束，继续等待
+                QTimer.singleShot(100, self._wait_for_thread_finish)
+                return
+        
+        # 线程已结束，清理资源
+        if self.server_thread:
+            self.server_thread.deleteLater()
+            self.server_thread = None
+        
+        self.log_info("[Web Toolkit] ✅ Streamlit service completely stopped")
+        self.log_text.append("[INFO] Server thread cleaned up successfully")
     
     def _on_server_started(self, url: str):
         """服务启动成功回调"""
@@ -379,17 +447,32 @@ class Plugin(PluginBase):
         self.server_url = url
         self._update_status_ui()
         
-        self.log_info(f"[Web Toolkit] ✅ Streamlit服务启动成功: {url}")
+        # 启动状态检查定时器
+        self.status_timer.start(10000)  # 每10秒检查一次，减少频率
+        
+        self.log_info(f"[Web Toolkit] ✅ Streamlit service started successfully: {url}")
         self.log_text.append(f"[INFO] {self.tr('plugin.web_toolkit.server_started')} - {url}")
         self.show_status_message(self.tr("plugin.web_toolkit.server_started"))
+        
+        # 检查是否有待打开的工具路径
+        if self.pending_tool_path:
+            tool_path = self.pending_tool_path  # 保存到局部变量
+            self.log_info(f"[Web Toolkit] 🚀 Auto-opening pending tool: {tool_path}")
+            self.pending_tool_path = None  # 先清空待打开路径
+            # 延迟1秒后打开工具，确保服务完全启动
+            QTimer.singleShot(1000, lambda: self._open_tool(tool_path))
     
     def _on_server_stopped(self):
         """服务停止回调"""
         self.server_status = "stopped"
         self.server_url = ""
+        self.pending_tool_path = None  # 清空待打开路径
         self._update_status_ui()
         
-        self.log_info("[Web Toolkit] 🛑 Streamlit服务已停止")
+        # 停止状态检查定时器
+        self.status_timer.stop()
+        
+        self.log_info("[Web Toolkit] 🛑 Streamlit service stopped")
         self.log_text.append(f"[INFO] {self.tr('plugin.web_toolkit.server_stopped')}")
         self.show_status_message(self.tr("plugin.web_toolkit.server_stopped"))
     
@@ -399,7 +482,7 @@ class Plugin(PluginBase):
         self.server_url = ""
         self._update_status_ui()
         
-        self.log_error(f"[Web Toolkit] ❌ Streamlit服务错误: {error}")
+        self.log_error(f"[Web Toolkit] ❌ Streamlit service error: {error}")
         self.log_text.append(f"[ERROR] Server Error: {error}")
         self.show_status_message(f"Server Error: {error}")
     
@@ -436,7 +519,9 @@ class Plugin(PluginBase):
         self.status_label.setStyleSheet(f"font-weight: bold; color: {status_color};")
         
         if self.server_url:
-            self.url_label.setText(self.tr("plugin.web_toolkit.server_url").format(url=self.server_url))
+            # 将0.0.0.0替换为localhost用于显示
+            display_url = self.server_url.replace("0.0.0.0", "localhost")
+            self.url_label.setText(self.tr("plugin.web_toolkit.server_url").format(url=display_url))
         else:
             self.url_label.setText("")
     
@@ -444,38 +529,44 @@ class Plugin(PluginBase):
         """检查服务器状态"""
         if self.server_status == "running" and self.server_url:
             try:
-                response = requests.get(self.server_url, timeout=2)
+                # 将0.0.0.0替换为localhost进行状态检查
+                check_url = self.server_url.replace("0.0.0.0", "localhost")
+                response = requests.get(check_url, timeout=2)
                 if response.status_code != 200:
                     # 服务可能已停止
+                    self.log_warning(f"[Web Toolkit] ⚠️ Service status check failed, status code: {response.status_code}")
                     self._on_server_stopped()
-            except:
+            except Exception as e:
                 # 连接失败，服务可能已停止
+                self.log_warning(f"[Web Toolkit] ⚠️ Service status check failed: {e}")
                 self._on_server_stopped()
     
     def _open_tool(self, path: str):
         """打开工具"""
         if self.server_status != "running":
-            self.log_warning("[Web Toolkit] ⚠️ 服务未运行，正在启动服务...")
+            self.log_warning("[Web Toolkit] ⚠️ Service not running, starting service...")
             self.log_text.append(f"[WARNING] {self.tr('plugin.web_toolkit.server_not_running')}")
+            # 保存要打开的路径，等服务启动后自动打开
+            self.pending_tool_path = path
             self._start_server()
-            # 这里可以添加等待逻辑，或者提示用户稍后再试
             return
         
-        tool_url = f"{self.server_url}{path}"
+        # 将0.0.0.0替换为localhost，确保浏览器可以访问
+        tool_url = f"{self.server_url}{path}".replace("0.0.0.0", "localhost")
         try:
             webbrowser.open(tool_url)
-            self.log_info(f"[Web Toolkit] 🌐 打开工具: {tool_url}")
+            self.log_info(f"[Web Toolkit] 🌐 Opening tool: {tool_url}")
             self.log_text.append(f"[INFO] {self.tr('plugin.web_toolkit.tool_opened')}: {path}")
             self.show_status_message(self.tr("plugin.web_toolkit.tool_opened"))
         except Exception as e:
-            self.log_error(f"[Web Toolkit] ❌ 打开工具失败: {e}")
+            self.log_error(f"[Web Toolkit] ❌ Failed to open tool: {e}")
             self.log_text.append(f"[ERROR] Failed to open tool: {e}")
     
     def _clear_log(self):
         """清空日志"""
         self.log_text.clear()
         self.log_text.append("[INFO] Log cleared.")
-        self.log_info("[Web Toolkit] 🧹 日志已清空")
+        self.log_info("[Web Toolkit] 🧹 Log cleared")
         self.show_status_message(self.tr("plugin.web_toolkit.log_cleared"))
     
     def on_language_changed(self, language: str):
@@ -501,8 +592,7 @@ class Plugin(PluginBase):
             self.start_button.setText(self.tr("plugin.web_toolkit.start_server"))
         if hasattr(self, 'stop_button'):
             self.stop_button.setText(self.tr("plugin.web_toolkit.stop_server"))
-        if hasattr(self, 'refresh_button'):
-            self.refresh_button.setText(self.tr("plugin.web_toolkit.refresh_status"))
+        # Refresh button removed
         if hasattr(self, 'clear_log_button'):
             self.clear_log_button.setText(self.tr("plugin.web_toolkit.clear_log"))
         
@@ -519,11 +609,46 @@ class Plugin(PluginBase):
     
     def cleanup(self):
         """清理资源"""
-        if self.server_thread and self.server_thread.isRunning():
-            self.server_thread.stop_server()
-            self.server_thread.wait(3000)  # 等待3秒
+        try:
+            self.log_info("[Web Toolkit] 🧹 Starting plugin resource cleanup...")
+            
+            # 停止状态检查定时器
+            if hasattr(self, 'status_timer') and self.status_timer:
+                self.status_timer.stop()
+                self.status_timer = None
+            
+            # 停止并清理服务器线程
+            if self.server_thread:
+                if self.server_thread.isRunning():
+                    self.log_info("[Web Toolkit] 🛑 Stopping server thread...")
+                    self.server_thread.stop_server()
+                    
+                    # 等待线程结束
+                    if not self.server_thread.wait(5000):  # 等待5秒
+                        self.log_warning("[Web Toolkit] ⚠️ Thread did not finish within 5 seconds, force terminating")
+                        self.server_thread.terminate()
+                        self.server_thread.wait(2000)  # 再等待2秒
+                
+                # 清理线程对象
+                self.server_thread.deleteLater()
+                self.server_thread = None
+            
+            # 重置状态
+            self.server_status = "stopped"
+            self.server_url = ""
+            
+            self.log_info("[Web Toolkit] ✅ Plugin resource cleanup completed")
+            
+        except Exception as e:
+            self.log_error(f"[Web Toolkit] ❌ Error occurred during resource cleanup: {e}")
+    
+    def _copy_url_to_clipboard(self, event):
+        """双击复制URL到剪贴板"""
+        if self.server_url:
+            from PySide6.QtWidgets import QApplication
+            # 将0.0.0.0替换为localhost用于复制
+            display_url = self.server_url.replace("0.0.0.0", "localhost")
+            clipboard = QApplication.clipboard()
+            clipboard.setText(display_url)
+            self.show_status_message(f"URL copied to clipboard: {display_url}")
         
-        if hasattr(self, 'status_timer'):
-            self.status_timer.stop()
-        
-        self.log_info("[Web Toolkit] 🧹 插件资源清理完成")

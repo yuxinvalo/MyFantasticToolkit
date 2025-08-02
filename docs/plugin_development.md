@@ -88,8 +88,7 @@ class Plugin(PluginBase):
     "author": "Your Name"
   },
   "available_config": {
-    "enabled": true,
-    "auto_save": true
+    "enabled": true
   }
 }
 ```
@@ -166,57 +165,6 @@ def create_widget(self) -> QWidget:
 def _on_button_clicked(self):
     self.log_info("[插件] 🔘 按钮被点击")
     self.show_status_message(self.tr("plugin.my_plugin.success"))
-```
-
-## ⚙️ 配置管理
-
-### 本地化配置文件
-
-每个插件拥有独立的配置文件 `config.json`：
-
-```json
-{
-  "plugin_info": {
-    "name": "my_plugin",
-    "display_name": "我的插件",
-    "description": "插件描述信息",
-    "version": "1.0.0",
-    "author": "作者名称"
-  },
-  "available_config": {
-    "enabled": true,
-    "auto_save": true,
-    "theme_color": "#007bff"
-  }
-}
-```
-
-### 配置操作
-
-```python
-class Plugin(PluginBase):
-    def __init__(self, app=None):
-        super().__init__(app)
-        
-        # 读取插件配置（从 available_config 字段）
-        self.auto_save = self.get_setting('auto_save', True)
-        self.theme_color = self.get_setting('theme_color', '#007bff')
-        
-        # 插件信息（从 plugin_info 字段，只读）
-        self.plugin_name = self.get_plugin_info('name')
-        self.plugin_version = self.get_plugin_info('version')
-    
-    def save_settings(self):
-        """保存配置到本地文件"""
-        # 只能修改 available_config 中的配置项
-        self.set_setting('auto_save', self.auto_save)
-        self.set_setting('theme_color', self.theme_color)
-        self.log_info("[配置] 💾 配置已保存")
-    
-    def get_plugin_info(self, key: str):
-        """获取插件信息（只读）"""
-        # 从 plugin_info 字段获取信息
-        return self.config.get('plugin_info', {}).get(key)
 ```
 
 ### 🔄 插件配置重构方案
