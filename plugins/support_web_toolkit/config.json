@@ -11,8 +11,7 @@
     "port": 8501,
     "host": [
       "localhost",
-      "0.0.0.0",
-      "0.0.0.0"
+      "localhost"
     ]
   },
   "quick_links": {
@@ -50,5 +49,5 @@
       "Asia/Kolkata"
     ]
   },
-  "web_language": "zh_CN"
+  "web_language": "en_US"
 }

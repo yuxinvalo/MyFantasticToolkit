@@ -470,7 +470,8 @@ class Plugin(PluginBase):
         self._update_status_ui()
         
         # 停止状态检查定时器
-        self.status_timer.stop()
+        if self.status_timer:
+            self.status_timer.stop()
         
         self.log_info("[Web Toolkit] 🛑 Streamlit service stopped")
         self.log_text.append(f"[INFO] {self.tr('plugin.web_toolkit.server_stopped')}")

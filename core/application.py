@@ -536,6 +536,13 @@ class LittleWorkerApp(QMainWindow):
         """退出应用程序"""
         from PySide6.QtWidgets import QApplication
         logger.info("[EXIT] 👋 User requested app exit")
+        
+        # 清理插件管理器（避免重复清理）
+        if self.plugin_manager and not getattr(self, '_cleanup_done', False):
+            logger.info("[EXIT] 🧹 Cleaning up plugin manager...")
+            self.plugin_manager.cleanup()
+            self._cleanup_done = True
+        
         if self.system_tray:
             self.system_tray.hide()
         QApplication.quit()
@@ -561,6 +568,13 @@ class LittleWorkerApp(QMainWindow):
         else:
             # 没有系统托盘，直接退出
             logger.info("[EXIT] 👋 Application exiting")
+            
+            # 清理插件管理器（避免重复清理）
+            if self.plugin_manager and not getattr(self, '_cleanup_done', False):
+                logger.info("[EXIT] 🧹 Cleaning up plugin manager...")
+                self.plugin_manager.cleanup()
+                self._cleanup_done = True
+            
             event.accept()
     
     def get_plugin_manager(self):

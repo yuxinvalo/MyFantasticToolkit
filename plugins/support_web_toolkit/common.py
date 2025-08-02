@@ -137,6 +137,27 @@ def apply_button_styles():
         box-shadow: 0 6px 20px rgba(81, 207, 102, 0.4) !important;
     }
     
+    /* Save As按钮样式 - 与下载按钮相同的蓝色主题，使用更高优先级 */
+    div[data-testid="column"]:nth-child(3) .stButton > button {
+        background: linear-gradient(135deg, #1f77b4, #4dabf7) !important;
+        color: white !important;
+        border: 2px solid transparent !important;
+        border-radius: 10px !important;
+        font-weight: 600 !important;
+        font-size: 14px !important;
+        padding: 0.5rem 1rem !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 12px rgba(31, 119, 180, 0.3) !important;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+    }
+    
+    div[data-testid="column"]:nth-child(3) .stButton > button:hover {
+        background: linear-gradient(135deg, #1864ab, #339af0) !important;
+        box-shadow: 0 6px 20px rgba(31, 119, 180, 0.4) !important;
+        transform: translateY(-2px) !important;
+        border: 2px solid rgba(255, 255, 255, 0.3) !important;
+    }
+    
     /* 响应式设计 */
     @media (max-width: 768px) {
         .stButton > button {

@@ -74,10 +74,9 @@ def save_timezone_config(source_timezone, target_timezones):
         with open(config_path, 'w', encoding='utf-8') as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
         
-        logging.info(f"时区转换器配置已保存: 源时区={source_timezone}, 目标时区={target_timezones}")
         return True
     except Exception as e:
-        logging.error(f"时区转换器配置保存失败: {str(e)}")
+        st.error(f"Timezone converter config save failed: {str(e)} - {traceback.format_exc()}")
         return False
 
 # 加载配置
@@ -212,19 +211,19 @@ if convert_button and target_timezones:
             column_config={
                 '🌍 时区': st.column_config.TextColumn(
                     width="medium",
-                    help="目标时区"
+                    help="Target timezone"
                 ),
                 '📍 描述': st.column_config.TextColumn(
                     width="large",
-                    help="时区描述"
+                    help="Timezone description"
                 ),
                 '🕐 转换时间': st.column_config.TextColumn(
                     width="large",
-                    help="转换后的时间"
+                    help="Converted time"
                 ),
                 '⏰ 时差': st.column_config.TextColumn(
                     width="small",
-                    help="与源时区的时差"
+                    help="Time difference from source timezone"
                 )
             }
         )
