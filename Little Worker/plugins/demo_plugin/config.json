@@ -1,0 +1,26 @@
+{
+  "plugin_info": {
+    "name": "demo_plugin",
+    "display_name": "Demo Plugin",
+    "description": "A demo plugin for testing the plugin system",
+    "version": "1.0.0",
+    "author": "HSBC IT Support"
+  },
+  "available_config": {
+    "enabled": true,
+    "bool test": true,
+    "str test": "testbac",
+    "int test": 123,
+    "list test": [
+      "1",
+      "2",
+      "3",
+      "2"
+    ],
+    "keyboard_1": "Alt+S",
+    "keyboard_2": "Ctrl+W"
+  },
+  "settings": {
+    "click_count": 10
+  }
+}

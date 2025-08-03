@@ -1,0 +1,53 @@
+{
+  "plugin_info": {
+    "name": "support_web_toolkit",
+    "display_name": "Support Web Toolkit",
+    "version": "1.0.0",
+    "author": "Tearsyu",
+    "description": "IT Support Web Toolkit, 提供一些常用的工具，例如json格式化工具、时差转换、markdown文本撰写转格式等。"
+  },
+  "available_config": {
+    "enabled": true,
+    "port": 8501,
+    "host": [
+      "localhost",
+      "localhost"
+    ]
+  },
+  "quick_links": {
+    "FCDP Knowledge": [
+      {
+        "name": "Bilibili",
+        "url": "https://www.bilibili.com/"
+      },
+      {
+        "name": "Douyu",
+        "url": "https://www.douyu.com/"
+      }
+    ],
+    "Service Now": [
+      {
+        "name": "Service Now",
+        "url": "https://service-now.com/"
+      },
+      {
+        "name": "Test Link",
+        "url": "https://ytshorts.savetube.me/zh/download?from=zh%2Fyoutube-video-downloader-3#google_vignette"
+      }
+    ],
+    "HSBC Support": [
+      {
+        "name": "HSBC Support",
+        "url": "https://hsbc.support.com/"
+      }
+    ]
+  },
+  "timezone_converter": {
+    "source_timezone": "Asia/Shanghai",
+    "target_timezones": [
+      "Europe/London",
+      "Asia/Kolkata"
+    ]
+  },
+  "web_language": "en_US"
+}

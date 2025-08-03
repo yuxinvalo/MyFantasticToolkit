@@ -1,0 +1,18 @@
+{
+  "plugin.capturer.name": "截图工具",
+  "plugin.capturer.description": "专业的截图工具，支持区域截图、编辑和OCR识别",
+  "plugin.capturer.description_detail": "专业的截图工具，支持区域截图、编辑和OCR识别",
+  "plugin.capturer.hotkey_tip": "按 {hotkey} 开始截图",
+  "plugin.capturer.capture_area": "拖拽选择截图区域",
+  "plugin.capturer.save_success": "截图已保存到: {path}",
+  "plugin.capturer.ocr_result": "OCR识别结果",
+  "plugin.capturer.pin_image": "钉在屏幕上",
+  "plugin.capturer.edit_image": "编辑图片",
+  "plugin.capturer.save_image": "保存图片",
+  "plugin.capturer.copy_text": "复制文字",
+  "plugin.capturer.settings": "截图设置",
+  "plugin.capturer.capture_button": "🎯 开始截图",
+  "plugin.capturer.capture_button_base": "🎯 开始截图",
+  "plugin.capturer.features_html": "<div style='background-color: #f8f9fa; padding: 15px; border-radius: 6px; margin: 10px 0 25px 0;'><h3 style='color: #2c3e50; margin: 0 0 10px 0; font-size: 14px;'>🎯 主要功能</h3><ul style='margin: 0; padding-left: 20px; color: #2c3e50; font-size: 13px; line-height: 1.6;'><li>🖱️ 鼠标拖拽自定义截图区域选择</li><li>📌 图片钉在屏幕上（悬浮显示）</li><li>🔍 OCR文字识别和复制功能</li></ul></div>",
+  "plugin.capturer.usage_html": "<div style='background-color: #f8f9fa; padding: 15px; border-radius: 6px; margin: 10px 0;'><h3 style='color: #2c3e50; margin: 0 0 10px 0; font-size: 14px;'>📖 使用说明</h3><div style='background-color: #ecf0f1; padding: 12px; border-radius: 6px; margin: 10px 0; text-align: center; font-weight: bold; color: #e74c3c; font-size: 12px;'>按 {hotkey} 开始截图</div><ol style='margin: 0; padding-left: 20px; color: #495057; font-size: 11px; line-height: 1.6;'><li>按下快捷键 {hotkey} 开始截图</li><li>拖拽鼠标选择截图区域</li><li>释放鼠标完成区域选择</li><li>使用工具栏进行编辑、OCR识别或保存</li><li>点击钉图标可将图片悬浮在屏幕上</li></ol></div>"
+}
