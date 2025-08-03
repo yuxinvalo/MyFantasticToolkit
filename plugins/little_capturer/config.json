@@ -7,7 +7,7 @@
     "author": "HSBC IT Support"
   },
   "available_config": {
-    "enabled": false,
+    "enabled": true,
     "keyboard_shortcut": "Alt+Shift+Z",
     "auto_hide_window": true,
     "save_path": "./screenshots",

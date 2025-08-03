@@ -1,6 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-
 a = Analysis(
     ['main.py'],
     pathex=[],
@@ -11,7 +10,6 @@ a = Analysis(
     ],
     hiddenimports=[
         'requests',
-        'streamlit',
         'pandas',
         'pytz',
         'markdown',

@@ -5,6 +5,7 @@ JSON格式化工具页面
 
 import streamlit as st
 import json
+import ast
 from pathlib import Path
 from datetime import datetime
 from common import load_config, load_translations, tr, init_language, save_config, apply_button_styles
@@ -122,15 +123,16 @@ else:
 col1, col2 = st.columns([1, 1])
 
 with col1:
+    # 根据语言设置占位符，支持JSON和Python字典格式
+    placeholder_text = '{\n  "name": "示例",\n  "value": 123,\n  "items": [1, 2, 3]\n}\n\n或Python字典格式:\n{\n    \'name\': \'示例\',\n    \'value\': 123,\n    \'items\': [1, 2, 3]\n}' if st.session_state.language == 'zh_CN' else '{\n  "name": "example",\n  "value": 123,\n  "items": [1, 2, 3]\n}\n\nOr Python dict format:\n{\n    \'name\': \'example\',\n    \'value\': 123,\n    \'items\': [1, 2, 3]\n}'
     
-    # 根据语言设置不同的占位符
-    placeholder_text = '{\n  "name": "示例",\n  "value": 123,\n  "items": [1, 2, 3]\n}' if st.session_state.language == 'zh_CN' else '{\n  "name": "example",\n  "value": 123,\n  "items": [1, 2, 3]\n}'
+    help_text = "支持JSON格式或Python字典格式，会自动识别" if st.session_state.language == 'zh_CN' else "Supports JSON or Python dict format, auto-detection enabled"
     
     json_input = st.text_area(
         tr('json_formatter.input_placeholder'),
         height=400,
         placeholder=placeholder_text,
-        help=tr('json_formatter.input_help')
+        help=help_text
     )
     
     # 格式化选项
@@ -150,8 +152,12 @@ with col2:
         # 实时处理JSON格式化
         if json_input.strip():
             try:
-                # 解析JSON
-                parsed_json = json.loads(json_input)
+                # 自动检测格式：先尝试JSON，失败后尝试Python字典
+                try:
+                    parsed_json = json.loads(json_input)
+                except json.JSONDecodeError:
+                    # JSON解析失败，尝试Python字典格式
+                    parsed_json = ast.literal_eval(json_input)
                 
                 # 应用排序选项
                 if sort_keys:
@@ -168,9 +174,9 @@ with col2:
                 # 显示可展开/折叠的JSON
                 st.json(parsed_json, expanded=expanded_level)
                      
-            except json.JSONDecodeError as e:
-                st.error(f"❌ {tr('json_formatter.error_format')}: {str(e)}")
-                st.info(f"💡 {tr('json_formatter.syntax_help')}")
+            except (ValueError, SyntaxError) as e:
+                st.error(f"❌ 格式错误: {str(e)}" if st.session_state.language == 'zh_CN' else f"❌ Format Error: {str(e)}")
+                st.info(f"💡 请检查JSON或Python字典语法格式" if st.session_state.language == 'zh_CN' else f"💡 Please check JSON or Python dict syntax format")
             except Exception as e:
                 st.error(f"❌ {tr('json_formatter.error_processing')}: {str(e)}")
         
@@ -181,7 +187,12 @@ with col2:
     # 下载按钮和暂存按钮放在容器外面
     if json_input.strip():
         try:
-            parsed_json = json.loads(json_input)
+            # 自动检测格式：先尝试JSON，失败后尝试Python字典
+            try:
+                parsed_json = json.loads(json_input)
+            except json.JSONDecodeError:
+                # JSON解析失败，尝试Python字典格式
+                parsed_json = ast.literal_eval(json_input)
             
             # 应用排序选项用于下载
             if sort_keys:
