@@ -25,49 +25,49 @@ apply_button_styles()
 
 # 初始化session state
 if 'markdown_content' not in st.session_state:
-    st.session_state.markdown_content = tr('default_markdown_content')
+    st.session_state.markdown_content = tr('markdown_editor.default_markdown_content')
 
 # 页面标题
-st.title(f"📝 {tr('markdown_editor')}")
-st.markdown(tr('markdown_editor_description'))
+st.title(f"📝 {tr('markdown_editor.title')}")
+st.markdown(tr('markdown_editor.description'))
 
 # 工具栏
-st.subheader(f"🛠️ {tr('toolbar')}")
+st.subheader(f"🛠️ {tr('markdown_editor.toolbar')}")
 
 tool_col1, tool_col2, tool_col3, tool_col4, tool_col5 = st.columns(5)
 
 with tool_col1:
-    if st.button(f"📄 {tr('new_document')}", use_container_width=True):
-        st.session_state.markdown_content = tr('new_document_template')
+    if st.button(f"📄 {tr('markdown_editor.new_document')}", use_container_width=True):
+        st.session_state.markdown_content = tr('markdown_editor.new_document_template')
         st.rerun()
 
 with tool_col2:
-    if st.button(f"📋 {tr('insert_table')}", use_container_width=True):
-        table_template = tr('table_template')
+    if st.button(f"📋 {tr('markdown_editor.insert_table')}", use_container_width=True):
+        table_template = tr('markdown_editor.table_template')
         st.session_state.markdown_content += table_template
         st.rerun()
 
 with tool_col3:
-    if st.button(f"💻 {tr('insert_code')}", use_container_width=True):
-        code_template = tr('code_template')
+    if st.button(f"💻 {tr('markdown_editor.insert_code')}", use_container_width=True):
+        code_template = tr('markdown_editor.code_template')
         st.session_state.markdown_content += code_template
         st.rerun()
 
 with tool_col4:
-    if st.button(f"🔗 {tr('insert_link')}", use_container_width=True):
-        link_template = tr('link_template')
+    if st.button(f"🔗 {tr('markdown_editor.insert_link')}", use_container_width=True):
+        link_template = tr('markdown_editor.link_template')
         st.session_state.markdown_content += link_template
         st.rerun()
 
 with tool_col5:
-    if st.button(f"📝 {tr('insert_quote')}", use_container_width=True):
-        quote_template = tr('quote_template')
+    if st.button(f"📝 {tr('markdown_editor.insert_quote')}", use_container_width=True):
+        quote_template = tr('markdown_editor.quote_template')
         st.session_state.markdown_content += quote_template
         st.rerun()
 
 # 使用说明
-with st.expander(f"📖 {tr('markdown_syntax_help')}"):
-    st.markdown(tr('markdown_syntax_content'))
+with st.expander(f"📖 {tr('markdown_editor.markdown_syntax_help')}"):
+    st.markdown(tr('markdown_editor.markdown_syntax_content'))
 
 st.markdown("---")
 
@@ -75,13 +75,13 @@ st.markdown("---")
 col1, col2 = st.columns([1, 1])
 
 with col1:
-    st.subheader(f"✏️ {tr('editor')}")
+    st.subheader(f"✏️ {tr('markdown_editor.editor')}")
     
     # 文件上传
     uploaded_file = st.file_uploader(
-        tr('upload_markdown_file'),
+        tr('markdown_editor.upload_markdown_file'),
         type=['md', 'txt'],
-        help=tr('upload_file_help')
+        help=tr('markdown_editor.upload_file_help')
     )
     
     if uploaded_file is not None:
@@ -90,10 +90,10 @@ with col1:
     
     # 编辑器
     new_content = st.text_area(
-        tr('markdown_content'),
+        tr('markdown_editor.markdown_content'),
         value=st.session_state.markdown_content,
         height=700,
-        help=tr('markdown_content_help')
+        help=tr('markdown_editor.markdown_content_help')
     )
     
     # 实时更新内容
@@ -101,7 +101,7 @@ with col1:
         st.session_state.markdown_content = new_content
 
 with col2:
-    st.subheader(f"👀 {tr('live_preview')}")
+    st.subheader(f"👀 {tr('markdown_editor.live_preview')}")
     
     # 预览区域 - 添加滚动容器
     try:
@@ -122,18 +122,18 @@ with col2:
         )
         
     except Exception as e:
-        st.error(f"{tr('preview_error')}: {str(e)}")
+        st.error(f"{tr('markdown_editor.preview_error')}: {str(e)}")
 
 # 导出功能
 st.markdown("---")
-st.subheader(f"💾 {tr('export_document')}")
+st.subheader(f"💾 {tr('markdown_editor.export_document')}")
 
 export_col1, export_col2, export_col3 = st.columns(3)
 
 with export_col1:
     # 导出Markdown
     st.download_button(
-        f"📄 {tr('download_markdown')}",
+        f"📄 {tr('markdown_editor.download_markdown')}",
         st.session_state.markdown_content,
         f"document_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
         "text/markdown",
@@ -170,22 +170,22 @@ with export_col2:
 </html>"""
         
         st.download_button(
-            f"🌐 {tr('download_html')}",
+            f"🌐 {tr('markdown_editor.download_html')}",
             full_html,
             f"document_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html",
             "text/html",
             use_container_width=True
         )
     except Exception as e:
-        st.error(f"{tr('html_export_error')}: {str(e)}")
+        st.error(f"{tr('markdown_editor.html_export_error')}: {str(e)}")
 
-@st.dialog(tr('save_as'))
+@st.dialog(tr('markdown_editor.save_as'))
 def save_as_dialog():
-    st.markdown(f"**{tr('save_as_help')}**")
+    st.markdown(f"**{tr('markdown_editor.save_as_help')}**")
     
     filename = st.text_input(
-        tr('filename_input'),
-        placeholder=tr('filename_placeholder'),
+        tr('markdown_editor.filename_input'),
+        placeholder=tr('markdown_editor.filename_placeholder'),
         key="save_as_filename"
     )
     
@@ -195,13 +195,13 @@ def save_as_dialog():
         safe_filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
         
         st.markdown("---")
-        st.markdown(f"**{tr('export_document')}**")
+        st.markdown(f"**{tr('markdown_editor.export_document')}**")
         
         col_md, col_html = st.columns(2)
         
         with col_md:
             st.download_button(
-                f"📄 {tr('download_markdown')}",
+                f"📄 {tr('markdown_editor.download_markdown')}",
                 st.session_state.markdown_content,
                 f"{safe_filename}.md",
                 "text/markdown",
@@ -236,21 +236,21 @@ def save_as_dialog():
 </html>"""
                 
                 st.download_button(
-                    f"🌐 {tr('download_html')}",
+                    f"🌐 {tr('markdown_editor.download_html')}",
                     full_html,
                     f"{safe_filename}.html",
                     "text/html",
                     use_container_width=True
                 )
             except Exception as e:
-                st.error(f"{tr('html_export_error')}: {str(e)}")
+                st.error(f"{tr('markdown_editor.html_export_error')}: {str(e)}")
     else:
-        st.info(tr('filename_placeholder'))
+        st.info(tr('markdown_editor.filename_placeholder'))
 
 with export_col3:
     # 另存为功能 - 使用download_button样式但触发模态对话框
     if st.download_button(
-        f"💾 {tr('save_as')}",
+        f"💾 {tr('markdown_editor.save_as')}",
         data="",  # 空数据，实际不下载
         file_name="temp.txt",
         mime="text/plain",
@@ -261,5 +261,5 @@ with export_col3:
 
 # 返回主页按钮
 st.markdown("---")
-if st.button(f"🏠 {tr('back_to_home')}", use_container_width=True):
+if st.button(f"🏠 {tr('markdown_editor.back_to_home')}", use_container_width=True):
     st.switch_page("streamlit_app.py")

@@ -16,6 +16,7 @@ from PySide6.QtCore import Qt, Signal, QSize, QEvent
 from PySide6.QtGui import QFont, QIcon, QPixmap, QKeySequence, QKeyEvent
 
 from utils.logger import logger
+from utils.crypto import encrypt_password, decrypt_password, is_password_field
 from .i18n import tr
 
 
@@ -511,6 +512,17 @@ class PluginConfigDialog(QDialog):
                 if default_value is not None:
                     widget.setText(str(default_value))
                 return widget
+            
+            elif config_type == 'password':
+                widget = QLineEdit()
+                widget.setMaxLength(100)  # 最大长度为100
+                widget.setEchoMode(QLineEdit.Password)  # 设置为密码输入模式
+                widget.setPlaceholderText("请输入密码")
+                if default_value is not None:
+                    # 解密密码用于显示
+                    decrypted_value = decrypt_password(str(default_value))
+                    widget.setText(decrypted_value)
+                return widget
 
             elif config_type == 'keyboard':
                 widget = KeyboardShortcutWidget(default_value)
@@ -536,6 +548,8 @@ class PluginConfigDialog(QDialog):
         elif isinstance(value, str):
             if key.lower().startswith('keyboard'):
                 return 'keyboard'
+            elif is_password_field(key):
+                return 'password'
             return 'string'
         else:
             return 'not support type'
@@ -553,7 +567,12 @@ class PluginConfigDialog(QDialog):
             if isinstance(widget, KeyboardShortcutWidget):
                 widget.set_shortcut(value)
             elif isinstance(widget, QLineEdit):
-                widget.setText(str(value) if value is not None else '')
+                if widget.echoMode() == QLineEdit.Password:
+                    # 密码字段需要解密后显示
+                    decrypted_value = decrypt_password(str(value)) if value is not None else ''
+                    widget.setText(decrypted_value)
+                else:
+                    widget.setText(str(value) if value is not None else '')
             elif isinstance(widget, QSpinBox):
                 widget.setValue(int(value) if value is not None else 0)
             elif isinstance(widget, QCheckBox):
@@ -582,6 +601,11 @@ class PluginConfigDialog(QDialog):
                 return widget.get_shortcut()
             elif isinstance(widget, QLineEdit):
                 text = widget.text().strip()
+                
+                # 检查是否是密码字段
+                if widget.echoMode() == QLineEdit.Password:
+                    # 密码字段需要加密后保存
+                    return encrypt_password(text) if text else ""
                 
                 # 检查是否是列表类型（通过占位符文本判断）
                 if widget.placeholderText() == "使用逗号分隔多个值":

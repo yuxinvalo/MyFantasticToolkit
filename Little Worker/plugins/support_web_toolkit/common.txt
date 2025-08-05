@@ -128,9 +128,9 @@ def apply_button_styles():
         box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4) !important;
     }
     
-    /* 下载按钮样式 - 蓝色主题 */
+    /* 下载按钮样式 - 紫色主题 */
     .stDownloadButton > button {
-        background: linear-gradient(135deg, #1f77b4, #4dabf7) !important;
+        background: linear-gradient(135deg, #667eea, #764ba2) !important;
         color: white !important;
         border: 2px solid transparent;
         border-radius: 10px;
@@ -138,13 +138,13 @@ def apply_button_styles():
         font-size: 14px;
         padding: 0.5rem 1rem;
         transition: all 0.3s ease;
-        box-shadow: 0 4px 12px rgba(31, 119, 180, 0.3);
+        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
         text-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
     
     .stDownloadButton > button:hover {
-        background: linear-gradient(135deg, #1864ab, #339af0) !important;
-        box-shadow: 0 6px 20px rgba(31, 119, 180, 0.4);
+        background: linear-gradient(135deg, #5a6fd8, #6a4190) !important;
+        box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
         transform: translateY(-2px);
         border: 2px solid rgba(255, 255, 255, 0.3);
     }
