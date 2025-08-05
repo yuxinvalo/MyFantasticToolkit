@@ -50,27 +50,6 @@ HSBCLittleWorker/
 └── docs/                      # 📚 Documentation
 ```
 
-## 🎯 Pending Implementation List
-
-### 🖼️ Custom Screenshot Tool Plugin
-
-**Feature Description**: Professional screenshot tool that surpasses Windows built-in screenshot functionality
-
-**Core Features**:
-- 🎯 Hotkey trigger (ALT+SHIFT+A) automatically hides main window
-- 🖱️ Mouse drag custom screenshot area selection
-- 🛠️ Post-screenshot editing toolbar including:
-  - 📌 Pin image on screen (floating display)
-  - 🔍 OCR text recognition and copy functionality
-  - ✏️ Paint brush editing tools (support undo/redo)
-  - 💾 Image save and export functionality
-
-### 📝 Work Log Tool Plugin
-
-**Feature Description**: Markdown log tool designed specifically for IT SUPPORT daily work
-
-**Application Scenarios**: Recording ETL process monitoring, problem handling, work handover, etc.
-
 **Core Features**:
 - 📄 Markdown format writing with rich text formatting support
 - 👀 Real-time preview (marko parser + QWebEngineView)

@@ -1,0 +1,28 @@
+{
+  "plugin.batch_monitor.title": "批处理监控",
+  "plugin.batch_monitor.test_connection": "测试连接",
+  "plugin.batch_monitor.start_monitor": "开始监控",
+  "plugin.batch_monitor.stop_monitor": "停止监控",
+  "plugin.batch_monitor.log_title": "监控日志",
+  
+  "plugin.batch_monitor.status.ready": "就绪",
+  "plugin.batch_monitor.status.testing": "测试中",
+  "plugin.batch_monitor.status.connected": "已连接",
+  "plugin.batch_monitor.status.monitoring": "监控中",
+  "plugin.batch_monitor.status.stopped": "已停止",
+  "plugin.batch_monitor.status.error": "错误",
+  "plugin.batch_monitor.status.config_error": "配置错误",
+  
+  "plugin.batch_monitor.log.initialized": "批处理监控插件已初始化",
+  "plugin.batch_monitor.log.testing_connection": "正在测试服务器连接...",
+  "plugin.batch_monitor.log.connection_success": "服务器连接测试成功",
+  "plugin.batch_monitor.log.config_incomplete": "服务器配置不完整，请检查主机和用户名设置",
+  "plugin.batch_monitor.log.monitor_started": "批处理监控已启动",
+  "plugin.batch_monitor.log.monitor_stopped": "批处理监控已停止",
+  
+  "plugin.batch_monitor.message.connection_success": "服务器连接测试成功！",
+  "plugin.batch_monitor.message.config_required": "请先在插件设置中配置服务器连接信息",
+  "plugin.batch_monitor.message.monitor_started": "批处理监控已启动",
+  "plugin.batch_monitor.message.monitor_stopped": "批处理监控已停止",
+  "plugin.batch_monitor.ssh_password": "SSH密码"
+}

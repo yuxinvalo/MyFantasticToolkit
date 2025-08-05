@@ -1,0 +1,28 @@
+{
+  "plugin.batch_monitor.title": "Batch Monitor",
+  "plugin.batch_monitor.test_connection": "Test Connection",
+  "plugin.batch_monitor.start_monitor": "Start Monitor",
+  "plugin.batch_monitor.stop_monitor": "Stop Monitor",
+  "plugin.batch_monitor.log_title": "Monitor Log",
+  "plugin.batch_monitor.ssh_password": "SSH Password",
+  
+  "plugin.batch_monitor.status.ready": "Ready",
+  "plugin.batch_monitor.status.testing": "Testing",
+  "plugin.batch_monitor.status.connected": "Connected",
+  "plugin.batch_monitor.status.monitoring": "Monitoring",
+  "plugin.batch_monitor.status.stopped": "Stopped",
+  "plugin.batch_monitor.status.error": "Error",
+  "plugin.batch_monitor.status.config_error": "Config Error",
+  
+  "plugin.batch_monitor.log.initialized": "Batch Monitor plugin initialized",
+  "plugin.batch_monitor.log.testing_connection": "Testing server connection...",
+  "plugin.batch_monitor.log.connection_success": "Server connection test successful",
+  "plugin.batch_monitor.log.config_incomplete": "Server configuration incomplete, please check host and username settings",
+  "plugin.batch_monitor.log.monitor_started": "Batch monitoring started",
+  "plugin.batch_monitor.log.monitor_stopped": "Batch monitoring stopped",
+  
+  "plugin.batch_monitor.message.connection_success": "Server connection test successful!",
+  "plugin.batch_monitor.message.config_required": "Please configure server connection information in plugin settings first",
+  "plugin.batch_monitor.message.monitor_started": "Batch monitoring started",
+  "plugin.batch_monitor.message.monitor_stopped": "Batch monitoring stopped"
+}

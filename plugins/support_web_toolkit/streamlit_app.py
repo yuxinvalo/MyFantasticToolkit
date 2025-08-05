@@ -51,6 +51,7 @@ with st.sidebar:
     st.page_link("pages/1_JSON_Formatter.py", label=f"📄 {tr('plugin.web_toolkit.json_formatter')}")
     st.page_link("pages/2_Timezone_Converter.py", label=f"⏰ {tr('plugin.web_toolkit.timezone_converter')}")
     st.page_link("pages/3_Markdown_Editor.py", label=f"📝 {tr('plugin.web_toolkit.markdown_editor')}")
+    st.page_link("pages/4_Todo_List.py", label=f"📋 {tr('plugin.web_toolkit.todo_list')}")
 
 # 主页内容
 st.title(f"🛠️ {tr('app.title')}")
@@ -63,7 +64,6 @@ st.subheader(f"🔗 {tr('app.quick_links')}")
 # 加载配置文件
 config = load_config()
 quick_links = config.get('quick_links', {})
-
 if quick_links:
     # 将quick_links按每行最多3列显示
     link_categories = list(quick_links.items())

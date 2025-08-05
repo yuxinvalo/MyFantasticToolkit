@@ -266,7 +266,16 @@ class Plugin(PluginBase):
             "#6f42c1",
             lambda: self._open_tool("/Markdown_Editor")
         )
-        tools_layout.addWidget(self.markdown_button, 1, 0, 1, 2)
+        tools_layout.addWidget(self.markdown_button, 1, 0)
+        
+        # Todo List工具
+        self.todo_button = self._create_tool_button(
+            self.tr("plugin.web_toolkit.todo_list"),
+            self.tr("plugin.web_toolkit.todo_list_desc"),
+            "#fd7e14",
+            lambda: self._open_tool("/Todo_List")
+        )
+        tools_layout.addWidget(self.todo_button, 1, 1)
         
         layout.addWidget(self.tools_group)
         

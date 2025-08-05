@@ -7,7 +7,7 @@
     "author": "HSBC IT Support"
   },
   "available_config": {
-    "enabled": true,
+    "enabled": false,
     "bool test": true,
     "str test": "testbac",
     "int test": 123,

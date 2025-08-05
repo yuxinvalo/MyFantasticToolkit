@@ -40,6 +40,12 @@
         "name": "HSBC Support",
         "url": "https://hsbc.support.com/"
       }
+    ],
+    "Test New": [
+      {
+        "name": "test",
+        "url": "http://test.com"
+      }
     ]
   },
   "timezone_converter": {
@@ -49,5 +55,28 @@
       "Asia/Kolkata"
     ]
   },
-  "web_language": "en_US"
+  "web_language": "zh_CN",
+  "todo_list": {
+    "todo": [
+      {
+        "display_name": "test editor function aaa",
+        "priority": "urgent",
+        "creation_time": "20250805 18:41:43"
+      }
+    ],
+    "done": [
+      {
+        "display_name": "Add Todo 2",
+        "priority": "low",
+        "creation_time": "20250805 18:47:59",
+        "done_time": "20250805 18:48:01"
+      },
+      {
+        "display_name": "todo2 test",
+        "priority": "urgent",
+        "creation_time": "20250805 18:47:55",
+        "done_time": "20250805 18:48:02"
+      }
+    ]
+  }
 }

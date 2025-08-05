@@ -36,6 +36,8 @@ dependencies = [
     "pynput>=1.8.1",
     "streamlit>=1.40.1",
     "markdown>=3.7",
+    "paramiko>=3.5.1",
+    "cryptography>=45.0.5",
 ]
 
 [project.optional-dependencies]

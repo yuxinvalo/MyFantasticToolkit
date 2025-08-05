@@ -478,7 +478,8 @@ class Plugin(PluginBase):  # 必须继承自 PluginBase 或其子类
 - `list`: 列表类型配置，在UI中显示为下拉选择框
   - 列表最后一个值为默认选项
   - 修改后，新选项会移动到列表末尾
-- `"keyboard"`: 键盘快捷键配置，在UI中显示为快捷键输入框
+- `"keyboard"`: 键盘快捷键配置，在UI中显示为快捷键输入框, 支持多个快捷键配置 均以keyboard开头
+- `password`: 密码类型配置，在UI中显示为密码输入框，并会根据配置自动加密存储
 
 **完整配置文件示例**：
 ```json
@@ -495,7 +496,7 @@ class Plugin(PluginBase):  # 必须继承自 PluginBase 或其子类
     "click_count": 0,
     "auto_save": true,
     "theme_color": "#007bff",
-    "hotkey": "Ctrl+Shift+D"
+    "keyboard_1": "Ctrl+Shift+D"
   }
 }
 ```

@@ -1,0 +1,49 @@
+{
+  "plugin_info": {
+    "name": "batch_monitor",
+    "display_name": "Batch Monitor",
+    "version": "1.0.0",
+    "author": "Tearsyu",
+    "description": "IT Support Batch Monitor, a tool to check the daily and monthly file, hence reducing the toil job."
+  },
+  "available_config": {
+    "enabled": true,
+    "port": 22,
+    "host": "192.168.1.14",
+    "username": "tearsyu",
+    "password": "Z0FBQUFBQm9rZ2ZKUElpMENHXzktZlFQa1VBbXJsQU4zaEU5U0Y2Y3lZOUtnbnY0Z2h4VG9DajJJckpCM0xaR1NvbDJfQlFuT1JGMjU5UEZiUWZiNTRwMTh4aG1Kck50aGc9PQ==",
+    "check frequency": 60,
+    "check timeout": 300
+  },
+  "data_path": "csv_data",
+  "gcloud_config": {},
+  "server_config": {
+    "cmd": {
+      "cd_worklow_path": "/home/tearsyu/workflow",
+      "monthly_batch_status": "cat WORKLOG_*{country_code}*_{report_date}*",
+      "check_dim_queue": "ls DIM_QUEUE_GBQ_CHECK*{country_code}*{report_date}*.json",
+      "cat_dim_queue": "cat {file_name}"
+    },
+    "delimiter": "|",
+    "sources": [
+      "HBME01",
+      "LATAM01",
+      "RoHBME01",
+      "HBME01",
+      "HBME01"
+    ],
+    "country_code": [
+      "US",
+      "GB",
+      "DE",
+      "FR",
+      "DZ",
+      "HM",
+      "CN",
+      "HK",
+      "HC",
+      "GB"
+    ],
+    "required_monthly_batch_headers": []
+  }
+}
