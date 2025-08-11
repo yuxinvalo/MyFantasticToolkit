@@ -57,5 +57,17 @@ def copy_py_files_to_txt():
     for file_info in copied_files:
         print(f"  {file_info}")
 
+import random
+
+import time
+
+def generate_custom_id():
+    timestamp_hex = hex(int(time.time()))[2:]
+    random_hex = ''.join([hex(random.randint(0, 15))[2:] for _ in range(20)])
+    # 按特定格式组合
+    return f"{timestamp_hex[:7]}_{random_hex[:4]}_{random_hex[4:8]}_{random_hex[8:]}"
+
 if __name__ == "__main__":
     copy_py_files_to_txt()
+    # custom_id = generate_custom_id()
+    # print(custom_id)

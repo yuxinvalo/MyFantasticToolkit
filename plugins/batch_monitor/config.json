@@ -19,8 +19,8 @@
   "gcloud_config": {},
   "server_config": {
     "cmd": {
-      "cd_worklow_path": "/home/tearsyu/workflow",
-      "monthly_batch_status": "cat WORKLOG_*{country_code}*_{report_date}*",
+      "cd_worklow_path": "/home/tearsyu/tests/hsbc_workflow",
+      "monthly_batch_status": "cat WORKFLOW_TRIGGER_LOG_{report_date}*.csv",
       "check_dim_queue": "ls DIM_QUEUE_GBQ_CHECK*{country_code}*{report_date}*.json",
       "cat_dim_queue": "cat {file_name}"
     },

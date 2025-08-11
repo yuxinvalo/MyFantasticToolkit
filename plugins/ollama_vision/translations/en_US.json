@@ -1,0 +1,19 @@
+{
+  "plugin.ollama_vision.title": "Ollama Vision Image Analysis",
+  "plugin.ollama_vision.description": "Analyze image content using Ollama Vision models",
+  "plugin.ollama_vision.file_selection": "Image Selection",
+  "plugin.ollama_vision.select_image": "Select Image",
+  "plugin.ollama_vision.select_image_dialog": "Select image to analyze",
+  "plugin.ollama_vision.no_file_selected": "No file selected",
+  "plugin.ollama_vision.file_selected": "Image file selected",
+  "plugin.ollama_vision.prompt_input": "Prompt Input",
+  "plugin.ollama_vision.analyze_image": "Analyze Image",
+  "plugin.ollama_vision.analyzing": "Analyzing image...",
+  "plugin.ollama_vision.ai_response": "AI Analysis Result",
+  "plugin.ollama_vision.clear_response": "Clear Result",
+  "plugin.ollama_vision.response_cleared": "Analysis result cleared",
+  "plugin.ollama_vision.analysis_complete": "Image analysis completed",
+  "plugin.ollama_vision.analysis_failed": "Image analysis failed",
+  "plugin.ollama_vision.no_image_warning": "Please select an image file to analyze first",
+  "plugin.ollama_vision.no_prompt_warning": "Please enter analysis prompt"
+}

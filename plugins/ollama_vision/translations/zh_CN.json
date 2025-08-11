@@ -1,0 +1,19 @@
+{
+  "plugin.ollama_vision.title": "Ollama Vision 图片分析",
+  "plugin.ollama_vision.description": "使用 Ollama Vision 模型分析图片内容",
+  "plugin.ollama_vision.file_selection": "图片选择",
+  "plugin.ollama_vision.select_image": "选择图片",
+  "plugin.ollama_vision.select_image_dialog": "选择要分析的图片",
+  "plugin.ollama_vision.no_file_selected": "未选择文件",
+  "plugin.ollama_vision.file_selected": "图片文件已选择",
+  "plugin.ollama_vision.prompt_input": "提示词编写",
+  "plugin.ollama_vision.analyze_image": "分析图片",
+  "plugin.ollama_vision.analyzing": "正在分析图片...",
+  "plugin.ollama_vision.ai_response": "AI 分析结果",
+  "plugin.ollama_vision.clear_response": "清空结果",
+  "plugin.ollama_vision.response_cleared": "分析结果已清空",
+  "plugin.ollama_vision.analysis_complete": "图片分析完成",
+  "plugin.ollama_vision.analysis_failed": "图片分析失败",
+  "plugin.ollama_vision.no_image_warning": "请先选择要分析的图片文件",
+  "plugin.ollama_vision.no_prompt_warning": "请输入分析提示词"
+}

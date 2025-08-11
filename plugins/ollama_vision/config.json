@@ -1,0 +1,20 @@
+{
+  "plugin_info": {
+    "name": "ollama_vision",
+    "display_name": "Ollama Vision",
+    "description": "使用 Ollama Vision 模型分析图片内容",
+    "version": "1.0.0",
+    "author": "Tearsyu"
+  },
+  "available_config": {
+    "enabled": true,
+    "host": "http://127.0.0.1",
+    "port": 11434,
+    "model": "gemma3:4b"
+  },
+  "settings": {
+    "prompt": "Please extract the text from the image, return in json format."
+  },
+  "prompt": "Please extract the text from the image, return in json format. Return format: {headers:[...]}",
+  "last_response": "```json\n{\n  \"headers\": [\n    \"Reporting Date\",\n    \"Country\",\n    \"Frequency\",\n    \"Group System ID\",\n    \"Group Sub System ID\",\n    \"Source Column Name\",\n    \"Dictionary Reference\",\n    \"Source Column Rule\",\n    \"Variance\",\n    \"Status\",\n    \"Filter\",\n    \"Stat\",\n    \"Check Type\"\n  ]\n}\n```"
+}
