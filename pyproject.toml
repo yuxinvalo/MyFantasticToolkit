@@ -39,6 +39,7 @@ dependencies = [
     "paramiko>=3.5.1",
     "cryptography>=45.0.5",
     "openpyxl>=3.1.5",
+    "python-docx>=1.1.2",
 ]
 
 [project.optional-dependencies]

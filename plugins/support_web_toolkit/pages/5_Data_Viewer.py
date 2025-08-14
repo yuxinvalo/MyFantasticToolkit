@@ -186,7 +186,7 @@ if st.session_state.uploaded_data is not None and st.session_state.selected_colu
         preview_df = filtered_df.iloc[start_row:start_row + show_rows]
         
         st.dataframe(
-            preview_df,
+            preview_df.astype(str),
             use_container_width=True,
             height=400
         )

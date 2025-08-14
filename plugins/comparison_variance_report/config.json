@@ -1,0 +1,18 @@
+{
+  "plugin_info": {
+    "name": "comparison_variance_report",
+    "display_name": "Comparison Variance Report",
+    "version": "1.0.0",
+    "author": "Tearsyu",
+    "description": "Comparison Variance Report, Semi-automated solution for monthly related user requests, protecting your eyes starts with you."
+  },
+  "available_config": {
+    "enabled": true,
+    "report_save_path": "reports"
+  },
+  "settings": {
+    "last_uk_excel_path": "C:/Users/Administrator/Documents/gientech_xlsx/comparison_mock_uk_original.xlsx",
+    "last_hk_excel_path": "C:/Users/Administrator/Documents/gientech_xlsx/comparison_mock_hk_original.xlsx",
+    "last_csv_path": "C:/Users/Administrator/Documents/gientech_xlsx/CVR_GCP_mock.csv"
+  }
+}
