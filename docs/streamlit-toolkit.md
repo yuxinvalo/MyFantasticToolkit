@@ -35,11 +35,14 @@ enable=False时，插件会优雅地关闭Streamlit APP。
    }
 ```
 ## Streamlit APP
-每一个工具都对应一个path，例如：
-- `json格式化工具`：`/json-formatter`
-- `时差转换工具`：`/timezone-converter`
-- `Markdown编辑`：`/markdown-editor`
-- `Todo List`：`/todo-list` 
+每一个工具都对应一个path：
+- `json格式化工具`：`/1_JSON_Formatter`
+- `时差转换工具`：`/2_Timezone_Converter`
+- `Markdown编辑`：`/3_Markdown_Editor`
+- `Todo List`：`/4_Todo_List` 
+- `Data Viewer`：`/5_Data_Viewer`
+- `Libre CMD`：`/6_Libre_CMD`
+
 
 ## 结构
 
@@ -50,9 +53,86 @@ plugins/support_web_toolkit/
 │   ├── 1_JSON_Formatter.py
 │   ├── 2_Timezone_Converter.py
 │   ├── 3_Markdown_Editor.py
-│   └── 4_Todo_List.py
+│   ├── 4_Todo_List.py
+│   ├── 5_Data_Viewer.py
+│   └── 6_Libre_CMD.py
 ├── common.py                 # 公共函数和翻译工具
 └── translations/             # 多语言翻译文件
     ├── zh_CN.json
     └── en_US.json
 ```
+
+## Libre CMD
+Libre CMD是一个命令行工具，用户可以在该工具中输入命令，程序会在指定的服务器上执行命令，并将结果返回给用户。 这是一个比较特殊的工具，它的配置除了在 config.json（username_sso 和 password_sso）中，其他的固定配置则需要保存到 libre_cmd.json。    
+
+### Libre CMD 目的
+注意，该项目的目的仅仅是用于IT SUPPORT一些简单的日常查询和监控，具体权限会受到用户在服务器的登陆账号限制, 做到一次设定，多次使用，避免了打开putty，手动输入账号，查询文档等一系列操作花的时间。 
+但本项目并不能进行复杂的命令行结果显示，过滤等，这违背了设计的初衷。 对于一些日期时间相关的查询，本项目并不能进行格式化，用户需要手动在命令中添加日期时间参数。
+
+
+### Libre CMD 配置说明
+该文件由用户通过页面设定，实时保存，实时读取。 
+文件格式为json，示例如下：
+
+```json
+{
+    "servers": ["192.168.3.14", "gbl1020203.system.hsbc.com"],
+    "libre_cmd": {
+      "Monthly HUB File Check": {
+        "description": "检查HUB文件内容",
+        "server": "192.168.3.14",
+        "steps": [
+          {
+            "command": "cd /home/tearsyu/Documents/tests/hsbc_workflow && cat WORKFLOW_TRIGGER_LOG_20250731.csv",
+            "output_type": "csv",
+            "delimiter": "|"
+          },
+          {
+            "command": "cd Documents && ls -alht",
+            "output_type": "text",
+          "delimiter": null
+        }
+      ]
+    },
+    "Check system status": {
+      "description": "检查系统状态",
+      "server": "192.168.3.14",
+      "steps": [
+        {
+          "command": "cd /home/tearsyu/Documents/tests/hsbc_workflow && cat hsbc_test.json",
+          "output_type": "json",
+          "delimiter": null
+
+        },
+        {
+          "command": "top",
+          "output_type": "text",
+          "delimiter": null
+        }
+      ]
+    }
+  }
+}
+
+```
+
+- servers: 用户保存的服务器列表，用户可以在页面中添加、删除、修改服务器。
+- libre_cmd: 用户保存的命令列表，用户可以在页面中添加、删除、修改一个cmd workflow。
+  - description: 关于这一个cmd workflow的简单描述，最多100字。
+  - server: 命令执行的服务器，用户可以在servers中选择，也可以手动填写，如果是手动填写且不存在于servers，则自动添加到servers列表。
+  - steps: 命令的执行步骤描述。
+    - command: 需要运行的命令行。
+    - output_type: 命令的输出类型，目前一共支持csv, json, text三种格式。
+    - delimiter: 如果用户选择csv格式，则需要指定csv的分隔符，否则无法创建该workflow. 
+    - timeout: 命令执行的超时时间，单位为秒，默认60秒。
+
+
+### library
+- UI: streamlit
+- 命令执行库: paramiko
+
+### 输出格式说明
+- csv: streamlit内置的表格显示，最多显示1000行
+- json: 键值对格式，streamlit内置的json显示框。
+- text: 普通文本格式，直接在页面中展示，最多10000字符。
+

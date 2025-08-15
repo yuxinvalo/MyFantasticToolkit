@@ -81,23 +81,5 @@
         "done_time": "20250805 18:48:02"
       }
     ]
-  },
-  "auto_server": {
-    "Monthly HUB File Check": {
-      "enabled": true,
-      "steps": [
-        {
-          "command": "cd /home && ls -lhr",
-          "output_type": "csv",
-          "delimiter": "\r"
-        },
-        {
-          "command": "cd Documents && ls",
-          "output_type": "text",
-          "delimiter": null
-        }
-      ]
-    }
-
   }
 }

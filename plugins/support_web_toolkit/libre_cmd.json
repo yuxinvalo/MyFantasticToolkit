@@ -1,0 +1,38 @@
+{
+    "servers": ["192.168.3.14", "gbl1020203.system.hsbc.com"],
+    "libre_cmd": {
+      "Monthly HUB File Check": {
+        "description": "检查HUB文件内容",
+        "server": "192.168.3.14",
+        "steps": [
+          {
+            "command": "cd /home/tearsyu/Documents/tests/hsbc_workflow && cat WORKFLOW_TRIGGER_LOG_20250731.csv",
+            "output_type": "csv",
+            "delimiter": "|"
+          },
+          {
+            "command": "cd Documents && ls -alht",
+            "output_type": "text",
+          "delimiter": null
+        }
+      ]
+    },
+    "Check system status": {
+      "description": "检查系统状态",
+      "server": "192.168.3.14",
+      "steps": [
+        {
+          "command": "cd /home/tearsyu/Documents/tests/hsbc_workflow && cat hsbc_test.json",
+          "output_type": "json",
+          "delimiter": null
+
+        },
+        {
+          "command": "top",
+          "output_type": "text",
+          "delimiter": null
+        }
+      ]
+    }
+  }
+}
