@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
     QSystemTrayIcon, QMessageBox, QSplitter
 )
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QIcon, QPixmap, QAction
+from PySide6.QtGui import QIcon, QAction
 
 from .plugin_manager import PluginManager
 from .main_window import MainWindow
@@ -540,10 +540,6 @@ class LittleWorkerApp(QMainWindow):
                 self._cleanup_done = True
             
             event.accept()
-    
-    def get_plugin_manager(self):
-        """获取插件管理器实例"""
-        return self.plugin_manager
     
     def get_plugin_manager(self):
         """获取插件管理器实例"""

@@ -5,7 +5,6 @@ HSBC Little Worker - 加密解密工具
 """
 
 import base64
-import hashlib
 import json
 from pathlib import Path
 from cryptography.fernet import Fernet

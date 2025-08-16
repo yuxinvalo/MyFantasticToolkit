@@ -2,7 +2,6 @@ import logging
 import os.path
 import sys
 import time
-import glob
 from datetime import datetime, timedelta
 from pathlib import Path
 

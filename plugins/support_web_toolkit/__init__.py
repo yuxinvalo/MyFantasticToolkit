@@ -3,6 +3,7 @@
 HSBC Little Worker - Support Web Toolkit Plugin
 """
 
+import os
 import subprocess
 import webbrowser
 import requests
@@ -14,7 +15,7 @@ from PySide6.QtWidgets import (
     QTextEdit, QGroupBox, QGridLayout, QFrame, QScrollArea
 )
 from PySide6.QtCore import Qt, QTimer, QThread, Signal
-from PySide6.QtGui import QFont, QPixmap
+from PySide6.QtGui import QFont
 
 from core.plugin_base import PluginBase
 from core.i18n import get_i18n_manager
@@ -26,11 +27,14 @@ class StreamlitServerThread(QThread):
     server_stopped = Signal()     # 服务停止信号
     server_error = Signal(str)    # 服务错误信号
     
-    def __init__(self, port: int, host: str = "localhost", log_info=None, log_error=None):
+    def __init__(self, port: int, host: str = "localhost", log_info=None, log_error=None, app=None):
         super().__init__()
         self.port = port
         self.host = host
-        self.process: Optional[subprocess.Popen] = None
+        self.log_info = log_info
+        self.log_error = log_error
+        self.app = app
+        self.process = None
         self.should_stop = False
         # 使用传入的插件日志方法
         self.log_info = log_info
@@ -74,18 +78,45 @@ class StreamlitServerThread(QThread):
                     "--browser.gatherUsageStats", "false"
                 ]
             
+            # 准备环境变量
+            env = os.environ.copy()
+            
+            # 获取解密后的凭据并设置为环境变量
+            if self.app:
+                try:
+                    plugin_manager = self.app.get_plugin_manager()
+                    # 获取插件实例并直接从配置中读取
+                    plugin_instance = plugin_manager.get_plugin('support_web_toolkit')
+                    if plugin_instance:
+                        username = plugin_instance.get_setting('username_sso')
+                        password = plugin_instance.get_decrypted_setting('password_sso')
+                        if username:
+                            env['STREAMLIT_SSO_USERNAME'] = username
+                        if password:
+                            env['STREAMLIT_SSO_PASSWORD'] = password
+                    
+                            self.log_info(f"🔐 SSO credentials prepared for Streamlit (username: {username})")
+                    else:
+                        self.log_error("⚠️ Plugin instance not found")
+                except Exception as e:
+                    if self.log_error:
+                        self.log_error(f"⚠️ Failed to get credentials: {e}")
+            else:
+                if self.log_error:
+                    self.log_error("⚠️ App instance not available for credential retrieval")
+            
             # 启动Streamlit服务
             try:
-                if self.log_info:
-                    self.log_info(f"🚀 Starting Streamlit with command: {' '.join(cmd)}")
-                    self.log_info(f"📁 Working directory: {plugin_dir}")
-                    self.log_info(f"📄 App file: {app_file}")
+                self.log_info(f"🚀 Starting Streamlit with command: {' '.join(cmd)}")
+                self.log_info(f"📁 Working directory: {plugin_dir}")
+                self.log_info(f"📄 App file: {app_file}")
                 
                 self.process = subprocess.Popen(
                     cmd,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    cwd=str(plugin_dir)
+                    cwd=str(plugin_dir),
+                    env=env
                 )
             except Exception as e:
                 if self.log_error:
@@ -467,7 +498,7 @@ class Plugin(PluginBase):
         self.log_text.append(f"[INFO] {self.tr('plugin.web_toolkit.server_starting')}")
         
         # 启动服务器线程
-        self.server_thread = StreamlitServerThread(self.port, self.host, self.log_info, self.log_error)
+        self.server_thread = StreamlitServerThread(self.port, self.host, self.log_info, self.log_error, self.app)
         self.server_thread.server_started.connect(self._on_server_started)
         self.server_thread.server_stopped.connect(self._on_server_stopped)
         self.server_thread.server_error.connect(self._on_server_error)

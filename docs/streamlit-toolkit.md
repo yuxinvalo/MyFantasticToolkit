@@ -133,6 +133,16 @@ Libre CMD是一个命令行工具，用户可以在该工具中输入命令，�
 
 ### 输出格式说明
 - csv: streamlit内置的表格显示，最多显示1000行
-- json: 键值对格式，streamlit内置的json显示框。
-- text: 普通文本格式，直接在页面中展示，最多10000字符。
+- json: 键值对格式，streamlit内置的json显示框, 如果json字符长度超过10000则保存到Downloads目录下。
+- text: 普通文本格式，直接在页面中展示，最多10000字符, 如果字符长度超过10000则保存到Downloads目录下。
+- 其他格式: 其他格式暂不支持，后续根据需求添加。
+
+
+### UI设计
+- 标题栏下是一个按钮，点击后进入 Libre CMD的配置页面, 可添加servers，或者导入，编辑，删除，添加cmd workflow。
+- 按钮下是一个下拉列表，用户可以选择已经保存的cmd workflow。
+- 选择cmd workflow后，会显示该workflow的标题，description，一个复制按钮（用于复制该workflow的json配置），以及每个step的command，等待用户点击执行。
+- 每执行完一个step，根据需求展示输出，如果出错则终止执行，展示错误信息。
+
+如果用户更换cmd workflow，应当清空之前所有和上一个cmd workflow相关的内容，重新再生成。
 

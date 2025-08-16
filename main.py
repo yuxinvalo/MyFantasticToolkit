@@ -9,38 +9,30 @@ import sys
 import os
 import traceback
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtNetwork import QLocalSocket, QLocalServer
 
 # 添加项目根目录到Python路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-import json
 from core.application import LittleWorkerApp
 from utils.logger import logger, cleanup_old_logs
+from utils.config_manager import ConfigurationManager
 
 
 def get_app_config():
     """获取应用配置"""
-    try:
-        config_path = os.path.join(os.path.dirname(__file__), "config", "app_config.json")
-        if os.path.exists(config_path):
-            with open(config_path, 'r', encoding='utf-8') as f:
-                config = json.load(f)
-                return config.get("app_info", {})
-    except Exception as e:
-        logger.error(f"[CONFIG] ❌ Failed to load app config: {e}")
+    defaults = {
+        "name": "HSBC Little Worker",
+        "version": "1.0.0",
+        "organization": "HSBC Finance IT Support",
+        "author": "Tearsyu",
+        "description": "HSBC Little Worker 是一个基于 PySide6 开发的插件化工具平台，用于个人工作小工具集合。",
+        "license": "MIT"
+    }
     
-    # 返回默认配置
-    return {
-            "name": "HSBC Little Worker",
-            "version": "1.0.0",
-            "organization": "HSBC Finance IT Support",
-            "author": "Tearsyu",
-            "description": "HSBC Little Worker 是一个基于 PySide6 开发的插件化工具平台，用于个人工作小工具集合。",
-            "license": "MIT"
-        }
+    config = ConfigurationManager.load_json_config("config/app_config.json", {"app_info": defaults})
+    return config.get("app_info", defaults)
 
 
 def main():

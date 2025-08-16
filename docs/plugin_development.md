@@ -134,6 +134,7 @@ def cleanup(self) -> None:
 ```python
 # 配置管理（available_config 字段）
 self.get_setting(key, default)     # 获取可配置项
+self.get_decrypted_setting(key, default)  # 获取解密后的配置项（自动解密password开头的字段）
 self.set_setting(key, value)       # 设置可配置项
 self.get_plugin_info(key)          # 获取插件信息（只读）
 
@@ -516,6 +517,83 @@ class Plugin(PluginBase):
 ```
 
 系统读取元信息后，会自动在插件目录下生成对应的 `config.json` 文件。
+
+## 🔐 密码解密API使用
+
+### 密码字段自动解密
+
+对于以 `password` 开头的配置字段，插件系统提供了自动解密功能：
+
+**配置文件示例**：
+```json
+{
+  "plugin_info": {
+    "name": "web_toolkit",
+    "display_name": "Web工具包",
+    "description": "提供Web相关功能的工具包",
+    "version": "1.0.0",
+    "author": "HSBC IT Support"
+  },
+  "available_config": {
+    "enabled": true,
+    "username_sso": "myuser",
+    "password_sso": "Z0FBQUFBQm9vQm1Qcl8waUF0V2UyYzJ1T29kX1NMaG5HSlhXVXVSRU4tbUxIeEIwTE9La29VSGQ0Z0pqLXR1c1ZVOWFtbHV2OEpuVnZORkhyUXphUG5EV2p5Z2pRQjlQNUE9PQ=="
+  }
+}
+```
+
+### 在插件中使用解密API
+
+```python
+class Plugin(PluginBase):
+    def initialize(self) -> bool:
+        # 获取普通配置
+        username = self.get_setting("username_sso", "")
+        
+        # 获取解密后的密码（自动解密password_开头的字段）
+        password = self.get_decrypted_setting("password_sso", "")
+        
+        # 使用解密后的密码进行身份验证
+        if self._authenticate(username, password):
+            self.log_info("[插件] ✅ 身份验证成功")
+            return True
+        else:
+            self.log_error("[插件] ❌ 身份验证失败")
+            return False
+    
+    def _authenticate(self, username: str, password: str) -> bool:
+        """使用明文密码进行身份验证"""
+        try:
+            # 这里password已经是解密后的明文密码
+            # 可以直接用于API调用、数据库连接等
+            response = requests.post(
+                "https://api.example.com/auth",
+                json={"username": username, "password": password}
+            )
+            return response.status_code == 200
+        except Exception as e:
+            self.log_error(f"[插件] ❌ 认证请求失败: {e}")
+            return False
+```
+
+### API方法说明
+
+- **`get_decrypted_setting(key, default)`**: 获取解密后的配置项
+  - 对于 `password` 开头的字段，自动解密后返回明文
+  - 对于非密码字段，行为与 `get_setting()` 相同
+  - 解密失败时返回原始加密值，并记录错误日志
+
+- **安全特性**:
+  - 密码在配置文件中以加密形式存储
+  - 只有在插件运行时才解密到内存中
+  - 解密过程有完整的错误处理和日志记录
+
+### 注意事项
+
+⚠️ **重要提醒**：
+- 解密后的密码仅存在于内存中，不要将其写入日志或文件
+- 确保在插件cleanup()方法中清理包含密码的变量
+- 密码字段必须以 `password` 开头才能被自动识别和解密
 
 ## 💡 最佳实践
 

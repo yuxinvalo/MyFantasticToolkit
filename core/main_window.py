@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QGridLayout, QGroupBox, QSizePolicy, QMenu
 )
 from PySide6.QtCore import Qt, Signal, QSize
-from PySide6.QtGui import QFont, QPalette, QColor, QAction
+from PySide6.QtGui import QFont
 
 from utils.logger import logger
 from .i18n import get_i18n_manager, tr
