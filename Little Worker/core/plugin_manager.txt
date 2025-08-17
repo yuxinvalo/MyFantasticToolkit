@@ -15,6 +15,7 @@ from PySide6.QtCore import QObject, Signal
 
 from .plugin_base import PluginBase
 from utils.logger import logger
+from utils.crypto import decrypt_password, is_password_field
 from core.i18n import tr, i18n_manager
 
 
@@ -387,6 +388,35 @@ class PluginManager(QObject):
         """获取插件设置"""
         plugin_settings = self.plugin_configs.get('plugin_settings', {})
         return plugin_settings.get(plugin_name, {}).get(key, default)
+    
+    def get_decrypted_plugin_setting(self, plugin_name: str, key: str, default=None):
+        """获取解密后的插件设置
+        
+        对于password开头的配置项，会自动解密后返回明文密码
+        对于非密码字段，行为与get_plugin_setting相同
+        
+        Args:
+            plugin_name: 插件名称
+            key: 设置键名
+            default: 默认值
+            
+        Returns:
+            解密后的设置值（如果是密码字段）或原始设置值
+        """
+        # 获取原始设置值
+        value = self.get_plugin_setting(plugin_name, key, default)
+        
+        # 如果是密码字段且值不为空，进行解密
+        if value and is_password_field(key):
+            try:
+                decrypted_value = decrypt_password(str(value))
+                logger.debug(f"[PLUGIN] 🔓 Password field '{key}' decrypted successfully for plugin {plugin_name}")
+                return decrypted_value
+            except Exception as e:
+                logger.error(f"[PLUGIN] ❌ Failed to decrypt password field '{key}' for plugin {plugin_name}: {e}")
+                return value  # 解密失败时返回原值
+        
+        return value
     
     def set_plugin_setting(self, plugin_name: str, key: str, value):
         """设置插件设置"""

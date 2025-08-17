@@ -53,6 +53,7 @@ with st.sidebar:
     st.page_link("pages/3_Markdown_Editor.py", label=f"📝 {tr('plugin.web_toolkit.markdown_editor')}")
     st.page_link("pages/4_Todo_List.py", label=f"📋 {tr('plugin.web_toolkit.todo_list')}")
     st.page_link("pages/5_Data_Viewer.py", label=f"📊 {tr('plugin.web_toolkit.data_viewer')}")
+    st.page_link("pages/6_Libre_CMD.py", label=f"💻 {tr('plugin.web_toolkit.libre_cmd')}")
 
 # 主页内容
 st.title(f"🛠️ {tr('app.title')}")
