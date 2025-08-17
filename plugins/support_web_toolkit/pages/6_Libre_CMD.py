@@ -28,7 +28,7 @@ from common import tr, apply_button_styles, init_language
 # 页面配置
 st.set_page_config(
     page_title="Libre CMD - IT Support Toolkit",
-    page_icon="💻",
+    page_icon="🖥️",
     layout="wide"
 )
 
@@ -113,8 +113,30 @@ def execute_ssh_command(hostname, username, password, command, timeout=60):
         # 连接服务器，减少连接超时时间
         ssh.connect(hostname, username=username, password=password, timeout=15)
         
+        # 为交互式命令设置环境变量，特别是TERM变量
+        # 对于特殊的交互式命令，添加适当的参数
+        processed_command = command.strip()
+        
+        # 处理top命令，添加批处理模式参数
+        if processed_command.startswith('top'):
+            if '-b' not in processed_command and '-n' not in processed_command:
+                processed_command = f"top -b -n 1"  # 批处理模式，只显示一次
+        
+        # 处理htop命令
+        elif processed_command.startswith('htop'):
+            processed_command = f"top -b -n 1"  # htop在非交互环境下用top替代
+        
+        # 处理其他可能需要TERM的命令
+        interactive_commands = ['vi', 'vim', 'nano', 'less', 'more', 'man']
+        needs_term = any(processed_command.startswith(cmd) for cmd in interactive_commands)
+        
+        if needs_term or 'top' in processed_command:
+            env_command = f"export TERM=xterm; export COLUMNS=120; export LINES=30; {processed_command}"
+        else:
+            env_command = processed_command
+        
         # 执行命令
-        stdin, stdout, stderr = ssh.exec_command(command, timeout=timeout)
+        stdin, stdout, stderr = ssh.exec_command(env_command, timeout=timeout)
         
         # 设置通道超时
         stdout.channel.settimeout(5)  # 减少通道超时时间
@@ -222,6 +244,73 @@ def execute_ssh_command(hostname, username, password, command, timeout=60):
                 pass
 
 
+def render_step_editor(step, step_index, key_prefix, workflow_name=None):
+    """渲染步骤编辑器的通用函数"""
+    step_col1, step_col2, step_col3 = st.columns([2, 1, 1])
+    
+    with step_col1:
+        step_output_type = st.selectbox(
+            tr("libre_cmd.step_output_type"),
+            options=["text", "json", "csv"],
+            index=["text", "json", "csv"].index(step['output_type']),
+            key=f"{key_prefix}_output_{step_index}"
+        )
+    
+    with step_col2:
+        step_delimiter = None
+        if step_output_type == "csv":
+            step_delimiter = st.text_input(
+                tr("libre_cmd.step_delimiter"),
+                value=step.get('delimiter', '|'),
+                key=f"{key_prefix}_delim_{step_index}"
+            )
+    
+    with step_col3:
+        step_timeout = st.number_input(
+            tr("libre_cmd.step_timeout"),
+            min_value=10,
+            max_value=300,
+            value=step.get('timeout', 60),
+            key=f"{key_prefix}_timeout_{step_index}"
+        )
+    
+    return {
+        'output_type': step_output_type,
+        'delimiter': step_delimiter,
+        'timeout': step_timeout
+    }
+
+def render_server_selector(servers, current_server, key_prefix, allow_custom=True):
+    """渲染服务器选择器的通用函数"""
+    server_options = servers.copy()
+    if allow_custom:
+        server_options.append(tr("libre_cmd.custom_server"))
+    
+    current_index = 0
+    if current_server in servers:
+        current_index = servers.index(current_server)
+    elif allow_custom:
+        current_index = len(servers)  # 选择自定义服务器选项
+    
+    selected_server = st.selectbox(
+        tr("libre_cmd.select_server"),
+        options=server_options,
+        index=current_index,
+        key=f"{key_prefix}_server_select"
+    )
+    
+    if allow_custom and selected_server == tr("libre_cmd.custom_server"):
+        custom_server = st.text_input(
+            tr("libre_cmd.server_host"),
+            value=current_server if current_server not in servers else "",
+            key=f"{key_prefix}_custom_server"
+        )
+        if custom_server:
+            return custom_server
+        return current_server
+    
+    return selected_server
+
 def format_output(output, output_type, delimiter=None):
     """格式化输出结果"""
     if output_type == "csv" and delimiter:
@@ -236,7 +325,26 @@ def format_output(output, output_type, delimiter=None):
                 
                 # 创建DataFrame
                 if csv_data:
-                    df = pd.DataFrame(csv_data[1:], columns=csv_data[0] if len(csv_data) > 1 else None)
+                    # 找出最大列数
+                    max_cols = max(len(row) for row in csv_data)
+                    
+                    # 生成列名：如果第一行可以作为列名且列数匹配，使用第一行；否则生成默认列名
+                    if len(csv_data) > 1 and len(csv_data[0]) == max_cols:
+                        # 尝试使用第一行作为列名
+                        columns = csv_data[0]
+                        data_rows = csv_data[1:]
+                    else:
+                        # 生成默认列名
+                        columns = [f"col_{i+1}" for i in range(max_cols)]
+                        data_rows = csv_data
+                    
+                    # 确保所有行都有相同的列数，不足的用空字符串填充
+                    normalized_data = []
+                    for row in data_rows:
+                        normalized_row = row + [''] * (max_cols - len(row))
+                        normalized_data.append(normalized_row)
+                    
+                    df = pd.DataFrame(normalized_data, columns=columns)
                     # 限制显示1000行
                     if len(df) > 1000:
                         st.warning(tr("libre_cmd.csv_truncated"))
@@ -449,21 +557,157 @@ def show_config_page():
     # 显示现有workflows
     if config["libre_cmd"]:
         st.markdown("##### " + tr("libre_cmd.current_workflows"))
+        
+        # 初始化编辑状态
+        if "editing_workflow" not in st.session_state:
+            st.session_state.editing_workflow = None
+        
         for workflow_name, workflow_data in config["libre_cmd"].items():
-            with st.expander(f"{workflow_name} - {workflow_data['description']}"):
-                st.write(f"**{tr('libre_cmd.server')}:** {workflow_data['server']}")
-                st.write(f"**{tr('libre_cmd.steps')}:** {len(workflow_data['steps'])}")
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button(tr("libre_cmd.copy_config"), key=f"copy_{workflow_name}"):
-                        st.code(json.dumps({workflow_name: workflow_data}, indent=2, ensure_ascii=False))
-                
-                with col2:
-                    if st.button(tr("libre_cmd.delete_workflow"), key=f"del_{workflow_name}"):
-                        del config["libre_cmd"][workflow_name]
-                        save_libre_cmd_config(config)
-                        st.rerun()
+            is_editing = st.session_state.editing_workflow == workflow_name
+            
+            if is_editing:
+                # 编辑模式
+                with st.expander(f"✏️ {tr('libre_cmd.editing_workflow')}: {workflow_name}", expanded=True):
+                    # 编辑workflow基本信息
+                    edit_desc = st.text_area(
+                        tr("libre_cmd.workflow_description"),
+                        value=workflow_data['description'],
+                        key=f"edit_desc_{workflow_name}",
+                        max_chars=100
+                    )
+                    
+                    edit_server = render_server_selector(
+                        config["servers"], 
+                        workflow_data['server'], 
+                        f"edit_{workflow_name}"
+                    )
+                    
+                    st.divider()
+                    
+                    # 编辑步骤
+                    st.markdown(f"#### {tr('libre_cmd.steps_config')}")
+                    
+                    # 初始化编辑步骤状态
+                    edit_steps_key = f"edit_steps_{workflow_name}"
+                    if edit_steps_key not in st.session_state:
+                        st.session_state[edit_steps_key] = workflow_data['steps'].copy()
+                    
+                    # 显示现有步骤并允许编辑
+                    for i, step in enumerate(st.session_state[edit_steps_key]):
+                        st.markdown(f"**{tr('libre_cmd.step_number').format(number=i+1)}:**")
+                        
+                        col1, col2 = st.columns([4, 1])
+                        with col1:
+                            # 编辑命令
+                            step_command = st.text_area(
+                                tr("libre_cmd.step_command"),
+                                value=step['command'],
+                                key=f"edit_step_cmd_{workflow_name}_{i}",
+                                height=80
+                            )
+                            st.session_state[edit_steps_key][i]['command'] = step_command
+                            
+                            # 编辑其他属性
+                            step_attrs = render_step_editor(
+                                step, i, f"edit_step_{workflow_name}", workflow_name
+                            )
+                            st.session_state[edit_steps_key][i].update(step_attrs)
+                        
+                        with col2:
+                            if st.button(tr("libre_cmd.delete_step"), key=f"edit_del_step_{workflow_name}_{i}"):
+                                st.session_state[edit_steps_key].pop(i)
+                                st.rerun()
+                        
+                        if i < len(st.session_state[edit_steps_key]) - 1:
+                            st.divider()
+                    
+                    # 添加新步骤
+                    st.markdown(f"#### {tr('libre_cmd.add_new_step')}")
+                    with st.container():
+                        new_step_command = st.text_area(
+                            tr("libre_cmd.step_command"),
+                            key=f"new_step_cmd_{workflow_name}"
+                        )
+                        
+                        # 使用默认步骤配置
+                        default_step = {'output_type': 'text', 'delimiter': '|', 'timeout': 60}
+                        new_step_attrs = render_step_editor(
+                            default_step, 'new', f"new_step_{workflow_name}", workflow_name
+                        )
+                        
+                        if st.button(tr("libre_cmd.add_step"), key=f"add_step_to_{workflow_name}"):
+                            if new_step_command:
+                                new_step = {"command": new_step_command}
+                                new_step.update(new_step_attrs)
+                                st.session_state[edit_steps_key].append(new_step)
+                                st.rerun()
+                    
+                    st.divider()
+                    
+                    # 保存和取消按钮
+                    save_col1, save_col2, save_col3 = st.columns([2, 1, 1])
+                    
+                    with save_col1:
+                        st.info(tr("libre_cmd.edit_workflow_info"))
+                    
+                    with save_col2:
+                        if st.button(tr("libre_cmd.save_changes"), key=f"save_edit_{workflow_name}", type="primary"):
+                            if edit_desc and edit_server and st.session_state[edit_steps_key]:
+                                # 如果是自定义服务器且不在列表中，添加到服务器列表
+                                if edit_server not in config["servers"]:
+                                    config["servers"].append(edit_server)
+                                
+                                # 更新workflow配置
+                                config["libre_cmd"][workflow_name] = {
+                                    "description": edit_desc,
+                                    "server": edit_server,
+                                    "steps": st.session_state[edit_steps_key]
+                                }
+                                
+                                if save_libre_cmd_config(config):
+                                    st.success(tr("libre_cmd.workflow_updated"))
+                                    # 清理编辑状态
+                                    st.session_state.editing_workflow = None
+                                    if edit_steps_key in st.session_state:
+                                        del st.session_state[edit_steps_key]
+                                    st.rerun()
+                            else:
+                                st.error(tr("libre_cmd.fill_all_fields"))
+                    
+                    with save_col3:
+                        if st.button(tr("libre_cmd.cancel_edit"), key=f"cancel_edit_{workflow_name}"):
+                            # 取消编辑，清理状态
+                            st.session_state.editing_workflow = None
+                            if edit_steps_key in st.session_state:
+                                del st.session_state[edit_steps_key]
+                            st.rerun()
+            
+            else:
+                # 显示模式
+                with st.expander(f"{workflow_name} - {workflow_data['description']}"):
+                    st.write(f"**{tr('libre_cmd.server')}:** {workflow_data['server']}")
+                    st.write(f"**{tr('libre_cmd.steps')}:** {len(workflow_data['steps'])}")
+                    
+                    # 显示步骤预览
+                    st.markdown(f"**{tr('libre_cmd.steps_preview')}:**")
+                    for i, step in enumerate(workflow_data['steps']):
+                        st.text(f"{i+1}. {step['command'][:50]}{'...' if len(step['command']) > 50 else ''}")
+                    
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        if st.button(tr("libre_cmd.edit_workflow"), key=f"edit_{workflow_name}"):
+                            st.session_state.editing_workflow = workflow_name
+                            st.rerun()
+                    
+                    with col2:
+                        if st.button(tr("libre_cmd.copy_config"), key=f"copy_{workflow_name}"):
+                            st.code(json.dumps({workflow_name: workflow_data}, indent=2, ensure_ascii=False))
+                    
+                    with col3:
+                        if st.button(tr("libre_cmd.delete_workflow"), key=f"del_{workflow_name}"):
+                            del config["libre_cmd"][workflow_name]
+                            save_libre_cmd_config(config)
+                            st.rerun()
 
 
 with tab2:
@@ -511,7 +755,7 @@ with tab1:
         # 显示workflow信息
         st.markdown(f"### {selected_workflow}")
         
-        # 创建信息展示区域
+        # 显示工作流基本信息
         info_col1, info_col2 = st.columns([3, 1])
         
         with info_col1:
@@ -520,7 +764,7 @@ with tab1:
             st.write(f"**{tr('libre_cmd.steps')}:** {len(workflow['steps'])}")
         
         with info_col2:
-            # 复制配置按钮 - 支持展开/隐藏
+            # 显示/隐藏配置按钮
             config_key = f"show_config_{selected_workflow}"
             if config_key not in st.session_state:
                 st.session_state[config_key] = False
@@ -530,74 +774,162 @@ with tab1:
                 st.session_state[config_key] = not st.session_state[config_key]
                 st.rerun()
         
-    # 显示配置内容（如果展开状态为True）
-    if config_key in st.session_state and st.session_state[config_key]:
-        workflow_json = json.dumps({selected_workflow: workflow}, indent=4, ensure_ascii=False)
-        st.code(workflow_json, language="json")
-        st.success(tr("libre_cmd.config_displayed_success"))
-    
-    st.divider()
-    
-    # 显示步骤和执行按钮
-    st.markdown("### " + tr("libre_cmd.workflow_steps"))
-    
-    # 初始化结果存储
-    if 'step_results' not in st.session_state:
-        st.session_state.step_results = []
-    
-    # 步骤预览
-    st.subheader(tr("libre_cmd.steps_preview"))
+        # 显示配置内容（如果需要）
+        if config_key in st.session_state and st.session_state[config_key]:
+            workflow_json = json.dumps({selected_workflow: workflow}, indent=4, ensure_ascii=False)
+            st.code(workflow_json, language="json")
+            st.success(tr("libre_cmd.config_displayed_success"))
         
-    # 步骤概览卡片
-    step_cols = st.columns(min(len(workflow['steps']), 3))
-    for i, step in enumerate(workflow['steps']):
-        col_idx = i % 3
-        with step_cols[col_idx]:
-            # 获取步骤执行状态
-            status_icon = "⏳"
-            status_color = "normal"
-            
-            if hasattr(st.session_state, 'step_results') and i < len(st.session_state.step_results):
-                result = st.session_state.step_results[i]
-                if result.get('success'):
-                    status_icon = "✅"
-                    status_color = "normal"
-                else:
-                    status_icon = "❌"
-                    status_color = "normal"
-            elif hasattr(st.session_state, 'execution_in_progress') and st.session_state.execution_in_progress:
-                if i < len(getattr(st.session_state, 'step_results', [])):
-                    status_icon = "🔄"
-                    status_color = "normal"
-            
-            # 显示步骤卡片
-            with st.container():
-                st.markdown(f"**{tr('libre_cmd.step_number').format(number=i+1)}** {status_icon}")
-                st.code(step['command'][:40] + ("..." if len(step['command']) > 40 else ""), language="bash")
-                st.caption(f"{tr('libre_cmd.output_type_label')}: {step['output_type']} | {tr('libre_cmd.timeout_label')}: {step.get('timeout', 60)}s")
+        # 初始化结果存储
+        if 'step_results' not in st.session_state:
+            st.session_state.step_results = []
         
-    # 详细步骤信息
-    with st.expander(tr("libre_cmd.view_detailed_steps"), expanded=False):
+        # 显示步骤
         for i, step in enumerate(workflow['steps']):
+            st.write(f"**{tr('libre_cmd.step')} {i+1}:** {step['command']}")
+    
+    # 详细步骤信息和临时编辑
+    with st.expander(tr("libre_cmd.view_detailed_steps"), expanded=False):
+        # 初始化临时编辑状态
+        temp_edit_key = f"temp_edit_{selected_workflow}"
+        if temp_edit_key not in st.session_state:
+            st.session_state[temp_edit_key] = {
+                'servers': [workflow['server']] if workflow['server'] not in config.get('servers', []) else config['servers'],
+                'selected_server': workflow['server'],
+                'steps': [{
+                    'command': step['command'],
+                    'output_type': step['output_type'],
+                    'delimiter': step.get('delimiter'),
+                    'timeout': step.get('timeout', 60)
+                } for step in workflow['steps']]
+            }
+        
+        # 临时编辑区域
+        st.markdown(f"#### 🔧 {tr('libre_cmd.temp_edit_title')}")
+        st.info(tr("libre_cmd.temp_edit_info"))
+        
+        # 添加交互式命令处理说明
+        with st.expander(tr("libre_cmd.interactive_command_info"), expanded=False):
+            st.markdown(tr("libre_cmd.interactive_command_details"))
+        
+        # 服务器选择（列表形式）
+        st.markdown(f"##### {tr('libre_cmd.temp_server_edit')}")
+        
+        # 获取所有可用服务器
+        available_servers = list(set(config.get('servers', []) + [workflow['server']]))
+        if not available_servers:
+            available_servers = [workflow['server']]
+            
+        # 服务器选择下拉框
+        selected_server_index = 0
+        if st.session_state[temp_edit_key]['selected_server'] in available_servers:
+            selected_server_index = available_servers.index(st.session_state[temp_edit_key]['selected_server'])
+            
+        temp_server = st.selectbox(
+            tr("libre_cmd.server_host"),
+            options=available_servers,
+            index=selected_server_index,
+            key=f"temp_server_select_{selected_workflow}",
+            help=tr("libre_cmd.temp_server_help")
+        )
+        st.session_state[temp_edit_key]['selected_server'] = temp_server
+        
+        # 添加自定义服务器选项
+        with st.expander(f"➕ {tr('libre_cmd.add_custom_server')}", expanded=False):
+            custom_server = st.text_input(
+                tr("libre_cmd.custom_server_address"),
+                key=f"custom_server_{selected_workflow}",
+                placeholder=tr("libre_cmd.custom_server_placeholder")
+            )
+            if st.button(tr("libre_cmd.add_server_button"), key=f"add_server_{selected_workflow}"):
+                if custom_server and custom_server not in available_servers:
+                    available_servers.append(custom_server)
+                    st.session_state[temp_edit_key]['selected_server'] = custom_server
+                    st.success(tr("libre_cmd.server_added_success").format(server=custom_server))
+                    st.rerun()
+        
+        st.divider()
+        
+        # 步骤编辑
+        st.markdown(f"##### {tr('libre_cmd.temp_steps_edit')}")
+        
+        for i, step in enumerate(st.session_state[temp_edit_key]['steps']):
             st.markdown(f"**{tr('libre_cmd.step_number').format(number=i+1)}:**")
-            col1, col2 = st.columns([3, 1])
+            
+            # 原始步骤信息显示
+            with st.expander(tr("libre_cmd.view_original_step").format(step=i+1), expanded=False):
+                original_step = workflow['steps'][i]
+                st.code(original_step['command'], language="bash")
+                st.write(f"• **{tr('libre_cmd.output_type')}:** {original_step['output_type']}")
+                if original_step.get('delimiter'):
+                    st.write(f"• **{tr('libre_cmd.delimiter')}:** `{original_step['delimiter']}`")
+                st.write(f"• **{tr('libre_cmd.timeout_seconds')}:** {original_step.get('timeout', 60)} {tr('libre_cmd.seconds')}")
+            
+            # 临时编辑区域
+            temp_command = st.text_area(
+                tr("libre_cmd.step_command"),
+                value=step['command'],
+                key=f"temp_cmd_{selected_workflow}_{i}",
+                height=80,
+                help=tr("libre_cmd.temp_command_help")
+            )
+            st.session_state[temp_edit_key]['steps'][i]['command'] = temp_command
+            
+            # 步骤配置选项
+            col1, col2, col3 = st.columns([2, 1, 1])
             
             with col1:
-                st.code(step['command'], language="bash")
-                st.write(f"• **{tr('libre_cmd.output_type')}:** {step['output_type']}")
-                if step.get('delimiter'):
-                    st.write(f"• **{tr('libre_cmd.delimiter')}:** `{step['delimiter']}`")
-                st.write(f"• **{tr('libre_cmd.timeout_seconds')}:** {step.get('timeout', 60)} {tr('libre_cmd.seconds')}")
+                temp_output_type = st.selectbox(
+                    tr("libre_cmd.step_output_type"),
+                    options=["text", "json", "csv"],
+                    index=["text", "json", "csv"].index(step['output_type']),
+                    key=f"temp_output_{selected_workflow}_{i}"
+                )
+                st.session_state[temp_edit_key]['steps'][i]['output_type'] = temp_output_type
             
             with col2:
-                # 复制命令按钮
-                if st.button("📋", key=f"copy_cmd_{selected_workflow}_{i}", help=tr("libre_cmd.copy_command")):
-                    st.code(step['command'], language="bash")
+                if temp_output_type == "csv":
+                    temp_delimiter = st.text_input(
+                        tr("libre_cmd.step_delimiter"),
+                        value=step.get('delimiter', '|'),
+                        key=f"temp_delim_{selected_workflow}_{i}"
+                    )
+                    st.session_state[temp_edit_key]['steps'][i]['delimiter'] = temp_delimiter
+                else:
+                    st.session_state[temp_edit_key]['steps'][i]['delimiter'] = None
             
-            if i < len(workflow['steps']) - 1:
+            with col3:
+                temp_timeout = st.number_input(
+                    tr("libre_cmd.step_timeout"),
+                    min_value=10,
+                    max_value=300,
+                    value=step.get('timeout', 60),
+                    key=f"temp_timeout_{selected_workflow}_{i}"
+                )
+                st.session_state[temp_edit_key]['steps'][i]['timeout'] = temp_timeout
+            
+            if i < len(st.session_state[temp_edit_key]['steps']) - 1:
                 st.divider()
         
+        # 重置按钮
+        st.divider()
+        if st.button(tr("libre_cmd.reset_temp_changes"), key=f"reset_temp_{selected_workflow}"):
+            st.session_state[temp_edit_key] = {
+                'servers': [workflow['server']] if workflow['server'] not in config.get('servers', []) else config['servers'],
+                'selected_server': workflow['server'],
+                'steps': [{
+                    'command': step['command'],
+                    'output_type': step['output_type'],
+                    'delimiter': step.get('delimiter'),
+                    'timeout': step.get('timeout', 60)
+                } for step in workflow['steps']]
+            }
+            st.success(tr("libre_cmd.temp_changes_reset"))
+            st.rerun()
+        
     st.divider()
+    
+
     
     # 执行控制区域
     exec_col1, exec_col2, exec_col3 = st.columns([2, 1, 1])
@@ -627,11 +959,25 @@ with tab1:
             progress_bar = st.progress(0)
             status_text = st.empty()
         
+        # 获取要执行的配置（临时编辑的或原始的）
+        temp_edit_key = f"temp_edit_{selected_workflow}"
+        if temp_edit_key in st.session_state and 'selected_server' in st.session_state[temp_edit_key]:
+            execution_config = st.session_state[temp_edit_key]
+            if execution_config['selected_server'] in config.get('servers', []) + [workflow['server']]:
+                execution_server = execution_config['selected_server']
+            else:
+                # 使用自定义服务器
+                execution_server = execution_config.get('custom_server', execution_config['selected_server'])
+            execution_steps = execution_config['steps']
+        else:
+            execution_server = workflow['server']
+            execution_steps = workflow['steps']
+        
         # 执行工作流
-        total_steps = len(workflow['steps'])
+        total_steps = len(execution_steps)
         failed_steps = []
         
-        for i, step in enumerate(workflow['steps']):
+        for i, step in enumerate(execution_steps):
             with status_container:
                 st.markdown(f"### {tr('libre_cmd.executing_step').format(current=i+1, total=total_steps)}")
                 st.code(step['command'], language="bash")
@@ -642,13 +988,13 @@ with tab1:
             
             # 创建一个临时的状态显示
             temp_status = st.empty()
-            temp_status.info(tr("libre_cmd.connecting_server").format(server=workflow['server']))
+            temp_status.info(tr("libre_cmd.connecting_server").format(server=execution_server))
             
             # 执行命令
             start_time = time.time()
             try:
                 success, output_or_error = execute_ssh_command(
-                     hostname=workflow['server'],
+                     hostname=execution_server,
                      username=username,
                      password=password,
                      command=step['command'],

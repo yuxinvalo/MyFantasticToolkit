@@ -12,12 +12,14 @@
         {
           "command": "cd /home/tearsyu/Documents/tests/hsbc_workflow && cat WORKFLOW_TRIGGER_LOG_20250731.csv",
           "output_type": "csv",
-          "delimiter": "|"
+          "delimiter": "|",
+          "timeout": 60
         },
         {
-          "command": "cd Documents && ls -alht",
-          "output_type": "text",
-          "delimiter": null
+          "command": "cd Documents && ls -laht | sed 's/[[:space:]]\\+/|/g'",
+          "output_type": "csv",
+          "delimiter": "|",
+          "timeout": 60
         }
       ]
     },
