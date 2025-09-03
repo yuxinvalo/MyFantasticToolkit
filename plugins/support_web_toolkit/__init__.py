@@ -308,6 +308,24 @@ class Plugin(PluginBase):
         )
         tools_layout.addWidget(self.todo_button, 1, 1)
         
+        # Data Viewer工具
+        self.data_viewer_button = self._create_tool_button(
+            self.tr("plugin.web_toolkit.data_viewer"),
+            self.tr("plugin.web_toolkit.data_viewer_desc"),
+            "#17a2b8",
+            lambda: self._open_tool("/Data_Viewer")
+        )
+        tools_layout.addWidget(self.data_viewer_button, 2, 0)
+        
+        # Libre CMD工具
+        self.libre_cmd_button = self._create_tool_button(
+            self.tr("plugin.web_toolkit.libre_cmd"),
+            self.tr("plugin.web_toolkit.libre_cmd_desc"),
+            "#6c757d",
+            lambda: self._open_tool("/Libre_CMD")
+        )
+        tools_layout.addWidget(self.libre_cmd_button, 2, 1)
+        
         layout.addWidget(self.tools_group)
         
         # 服务状态区域
@@ -546,7 +564,7 @@ class Plugin(PluginBase):
         self._update_status_ui()
         
         # 启动状态检查定时器
-        self.status_timer.start(10000)  # 每10秒检查一次，减少频率
+        self.status_timer.start(30000)  # 每30秒检查一次，减少频率
         
         self.log_info(f"[Web Toolkit] ✅ Streamlit service started successfully: {url}")
         self.log_text.append(f"[INFO] {self.tr('plugin.web_toolkit.server_started')} - {url}")

@@ -103,12 +103,20 @@ with col1:
     current_time = datetime.now()
     date_input = st.date_input(tr("timezone_converter.select_date"), value=current_time.date())
     
-    # 时间手动输入
+    # 初始化session state中的时间值
+    if 'default_time' not in st.session_state:
+        st.session_state.default_time = current_time.strftime("%H:%M:%S")
+    
+    # 时间手动输入 - 使用session state保持用户输入
     time_str = st.text_input(
         tr("timezone_converter.enter_time"),
-        value=current_time.strftime("%H:%M:%S"),
-        help=tr("timezone_converter.time_format_help")
+        value=st.session_state.default_time,
+        help=tr("timezone_converter.time_format_help"),
+        key="time_input"
     )
+    
+    # 更新session state中的时间值
+    st.session_state.default_time = time_str
     
     try:
         time_input = datetime.strptime(time_str, "%H:%M:%S").time()

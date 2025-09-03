@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 import markdown
 from datetime import datetime
-from common import load_config, load_translations, tr, init_language, apply_button_styles
+from common import tr, init_language, apply_button_styles
 
 # 页面配置
 st.set_page_config(
@@ -38,32 +38,37 @@ tool_col1, tool_col2, tool_col3, tool_col4, tool_col5 = st.columns(5)
 
 with tool_col1:
     if st.button(f"📄 {tr('markdown_editor.new_document')}", use_container_width=True):
-        st.session_state.markdown_content = tr('markdown_editor.new_document_template')
-        st.rerun()
+        new_content = tr('markdown_editor.new_document_template')
+        st.session_state.markdown_content = new_content
+        st.session_state.editor_content = new_content
 
 with tool_col2:
     if st.button(f"📋 {tr('markdown_editor.insert_table')}", use_container_width=True):
         table_template = tr('markdown_editor.table_template')
-        st.session_state.markdown_content += table_template
-        st.rerun()
+        new_content = st.session_state.markdown_content + table_template
+        st.session_state.markdown_content = new_content
+        st.session_state.editor_content = new_content
 
 with tool_col3:
     if st.button(f"💻 {tr('markdown_editor.insert_code')}", use_container_width=True):
         code_template = tr('markdown_editor.code_template')
-        st.session_state.markdown_content += code_template
-        st.rerun()
+        new_content = st.session_state.markdown_content + code_template
+        st.session_state.markdown_content = new_content
+        st.session_state.editor_content = new_content
 
 with tool_col4:
     if st.button(f"🔗 {tr('markdown_editor.insert_link')}", use_container_width=True):
         link_template = tr('markdown_editor.link_template')
-        st.session_state.markdown_content += link_template
-        st.rerun()
+        new_content = st.session_state.markdown_content + link_template
+        st.session_state.markdown_content = new_content
+        st.session_state.editor_content = new_content
 
 with tool_col5:
     if st.button(f"📝 {tr('markdown_editor.insert_quote')}", use_container_width=True):
         quote_template = tr('markdown_editor.quote_template')
-        st.session_state.markdown_content += quote_template
-        st.rerun()
+        new_content = st.session_state.markdown_content + quote_template
+        st.session_state.markdown_content = new_content
+        st.session_state.editor_content = new_content
 
 # 使用说明
 with st.expander(f"📖 {tr('markdown_editor.markdown_syntax_help')}"):
@@ -87,18 +92,21 @@ with col1:
     if uploaded_file is not None:
         content = uploaded_file.read().decode('utf-8')
         st.session_state.markdown_content = content
+        st.session_state.editor_content = content
     
-    # 编辑器
-    new_content = st.text_area(
+    # 编辑器 - 使用session_state直接管理状态
+    if 'editor_content' not in st.session_state:
+        st.session_state.editor_content = st.session_state.markdown_content
+    
+    # 同步编辑器内容到主内容
+    st.session_state.markdown_content = st.session_state.editor_content
+    
+    st.text_area(
         tr('markdown_editor.markdown_content'),
-        value=st.session_state.markdown_content,
         height=700,
-        help=tr('markdown_editor.markdown_content_help')
+        help=tr('markdown_editor.markdown_content_help'),
+        key="editor_content"
     )
-    
-    # 实时更新内容
-    if new_content != st.session_state.markdown_content:
-        st.session_state.markdown_content = new_content
 
 with col2:
     st.subheader(f"👀 {tr('markdown_editor.live_preview')}")

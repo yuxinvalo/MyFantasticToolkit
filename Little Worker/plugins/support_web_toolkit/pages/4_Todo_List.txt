@@ -47,10 +47,56 @@ def save_todos(todo_list, done_list):
     config['todo_list']['done'] = done_list
     return save_config(config)
 
-def clean_old_done_todos(done_list):
-    """清理超过两周的已完成Todo"""
+def get_archived_file_path():
+    """获取归档文件路径"""
+    config = load_config()
+    archived_path = config.get('todo_list', {}).get('archived_todo_path', 'archived_todos.json')
+    
+    # 获取当前插件目录
+    import sys
+    if getattr(sys, 'frozen', False):
+        # 打包后的环境
+        plugin_dir = Path(sys.executable).parent / "plugins" / "support_web_toolkit"
+    else:
+        # 开发环境
+        plugin_dir = Path(__file__).parent.parent
+    
+    # 处理相对路径
+    if archived_path.startswith('../'):
+        archived_file = plugin_dir / archived_path
+    else:
+        archived_file = plugin_dir / archived_path
+    
+    return archived_file.resolve()
+
+def load_archived_todos():
+    """加载归档的Todo数据"""
+    archived_file = get_archived_file_path()
+    if archived_file.exists():
+        try:
+            with open(archived_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return []
+    return []
+
+def save_archived_todos(archived_list):
+    """保存归档的Todo数据"""
+    archived_file = get_archived_file_path()
+    try:
+        # 确保目录存在
+        archived_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(archived_file, 'w', encoding='utf-8') as f:
+            json.dump(archived_list, f, ensure_ascii=False, indent=2)
+        return True
+    except IOError:
+        return False
+
+def archive_old_done_todos(done_list):
+    """归档超过两周的已完成Todo"""
     two_weeks_ago = datetime.now() - timedelta(weeks=2)
     cleaned_done = []
+    to_archive = []
     
     for item in done_list:
         try:
@@ -60,11 +106,27 @@ def clean_old_done_todos(done_list):
                 done_time = datetime.strptime(done_time_str, '%Y%m%d %H:%M:%S')
                 if done_time > two_weeks_ago:
                     cleaned_done.append(item)
+                else:
+                    # 添加归档时间戳
+                    archived_item = item.copy()
+                    archived_item['archived_time'] = datetime.now().strftime('%Y%m%d %H:%M:%S')
+                    to_archive.append(archived_item)
+            else:
+                # 如果没有完成时间，保留在已完成列表中
+                cleaned_done.append(item)
         except ValueError:
             # 如果时间格式有问题，保留该项目
             cleaned_done.append(item)
     
-    return cleaned_done
+    # 如果有需要归档的项目，保存到归档文件
+    if to_archive:
+        existing_archived = load_archived_todos()
+        existing_archived.extend(to_archive)
+        if not save_archived_todos(existing_archived):
+            # 如果归档失败，返回原始列表
+            return done_list, 0
+    
+    return cleaned_done, len(to_archive)
 
 def add_todo(display_name, priority="medium"):
     """添加新的Todo"""
@@ -91,8 +153,8 @@ def complete_todo(index):
         completed_todo['done_time'] = datetime.now().strftime('%Y%m%d %H:%M:%S')
         done_list.append(completed_todo)
         
-        # 清理旧的已完成项目
-        done_list = clean_old_done_todos(done_list)
+        # 归档旧的已完成项目
+        done_list, _ = archive_old_done_todos(done_list)
         
         return save_todos(todo_list, done_list)
     return False
@@ -288,18 +350,17 @@ else:
 # 显示已完成事项（可折叠）
 if done_list:
     with st.expander(f"✅ {tr('todo_list.completed_todos')} ({len(done_list)})", expanded=st.session_state.show_done):
-        # 清理按钮
-        if st.button(f"🧹 {tr('todo_list.clean_old_completed')}", help=tr('todo_list.clean_help')):
-            cleaned_done = clean_old_done_todos(done_list)
+        # 归档按钮
+        if st.button(f"📦 {tr('todo_list.archive_old_completed')}", help=tr('todo_list.archive_help')):
+            cleaned_done, archived_count = archive_old_done_todos(done_list)
             if save_todos(todo_list, cleaned_done):
-                removed_count = len(done_list) - len(cleaned_done)
-                if removed_count > 0:
-                    st.success(f"✅ {tr('todo_list.clean_success')}: {removed_count}")
+                if archived_count > 0:
+                    st.success(f"✅ [📦] {tr('todo_list.archive_success')} - {archived_count} {tr('todo_list.archived_count')}")
                     st.rerun()
                 else:
-                    st.info(f"💡 {tr('todo_list.no_old_completed')}")
+                    st.info(f"💡 {tr('todo_list.no_old_archived')}")
             else:
-                st.error(f"❌ {tr('todo_list.clean_failed')}")
+                st.error(f"❌ {tr('todo_list.archive_failed')}")
         
         st.markdown("---")
         
@@ -344,7 +405,7 @@ else:
 
 # 统计信息
 st.subheader(f"📊 {tr('todo_list.statistics')}")
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     st.metric(tr('todo_list.pending_count'), len(todo_list))
@@ -353,8 +414,12 @@ with col2:
     st.metric(tr('todo_list.completed_count'), len(done_list))
 
 with col3:
-    total = len(todo_list) + len(done_list)
-    completion_rate = (len(done_list) / total * 100) if total > 0 else 0
+    archived_todos = load_archived_todos()
+    st.metric(f"📦 {tr('todo_list.archived_count')}", len(archived_todos))
+
+with col4:
+    total = len(todo_list) + len(done_list) + len(archived_todos)
+    completion_rate = ((len(done_list) + len(archived_todos)) / total * 100) if total > 0 else 0
     st.metric(tr('todo_list.completion_rate'), f"{completion_rate:.1f}%")
 
 # 返回主页按钮

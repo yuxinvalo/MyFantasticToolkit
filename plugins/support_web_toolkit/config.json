@@ -59,6 +59,7 @@
   },
   "web_language": "en_US",
   "todo_list": {
+    "archived_todo_path": "archived_todos.json",
     "todo": [
       {
         "display_name": "test editor function aaa",
@@ -66,19 +67,6 @@
         "creation_time": "20250805 18:41:43"
       }
     ],
-    "done": [
-      {
-        "display_name": "Add Todo 2",
-        "priority": "low",
-        "creation_time": "20250805 18:47:59",
-        "done_time": "20250805 18:48:01"
-      },
-      {
-        "display_name": "todo2 test",
-        "priority": "urgent",
-        "creation_time": "20250805 18:47:55",
-        "done_time": "20250805 18:48:02"
-      }
-    ]
+    "done": []
   }
 }
