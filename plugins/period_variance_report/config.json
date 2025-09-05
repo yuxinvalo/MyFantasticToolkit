@@ -8,7 +8,8 @@
   },
   "available_config": {
     "enabled": true,
-    "report_save_path": "reports"
+    "report_save_path": "reports",
+    "gcp_project_id": "hsbc-10437964-radar51-prod"
   },
   "settings": {
     "last_original_csv_path": "C:/Users/Administrator/Downloads/filtered_data_20250905_122606.csv"

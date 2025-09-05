@@ -7,7 +7,7 @@
     "author": "Tearsyu"
   },
   "available_config": {
-    "enabled": true,
+    "enabled": false,
     "host": "http://127.0.0.1",
     "port": 11434,
     "model": "gemma3:4b"

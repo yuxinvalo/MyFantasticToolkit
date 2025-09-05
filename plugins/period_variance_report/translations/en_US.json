@@ -7,6 +7,7 @@
   "plugin.pvr.log_viewer_title": "Process Log",
   "plugin.pvr.log_initial_message": "📋 [System] Period Variance Report plugin is ready. Please select a CSV file and click Generate Report to start processing...",
   "plugin.pvr.generate_button": "Generate Report",
+  "plugin.pvr.clear_log_button": "🧹 Clear Log",
   "plugin.pvr.select_csv_file": "Select CSV File",
   "plugin.pvr.error_no_file": "Please select a valid CSV file first",
   "plugin.pvr.error_no_sql": "Please enter SQL query"
