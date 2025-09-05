@@ -1,0 +1,13 @@
+{
+  "plugin.pvr.sql_editor_title": "BigQuery SQL 编辑器",
+  "plugin.pvr.sql_placeholder": "请输入或编辑 BigQuery SQL 查询语句...",
+  "plugin.pvr.file_chooser_title": "CSV 文件选择",
+  "plugin.pvr.no_file_selected": "未选择文件",
+  "plugin.pvr.browse_button": "浏览",
+  "plugin.pvr.log_viewer_title": "处理日志",
+  "plugin.pvr.log_initial_message": "📋 [系统] 期间差异报告插件已就绪，请选择 CSV 文件并点击生成报告开始处理...",
+  "plugin.pvr.generate_button": "生成报告",
+  "plugin.pvr.select_csv_file": "选择 CSV 文件",
+  "plugin.pvr.error_no_file": "请先选择有效的 CSV 文件",
+  "plugin.pvr.error_no_sql": "请输入 SQL 查询语句"
+}

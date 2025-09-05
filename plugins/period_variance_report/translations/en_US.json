@@ -1,0 +1,13 @@
+{
+  "plugin.pvr.sql_editor_title": "BigQuery SQL Editor",
+  "plugin.pvr.sql_placeholder": "Enter or edit your BigQuery SQL query here...",
+  "plugin.pvr.file_chooser_title": "CSV File Selection",
+  "plugin.pvr.no_file_selected": "No file selected",
+  "plugin.pvr.browse_button": "Browse",
+  "plugin.pvr.log_viewer_title": "Process Log",
+  "plugin.pvr.log_initial_message": "📋 [System] Period Variance Report plugin is ready. Please select a CSV file and click Generate Report to start processing...",
+  "plugin.pvr.generate_button": "Generate Report",
+  "plugin.pvr.select_csv_file": "Select CSV File",
+  "plugin.pvr.error_no_file": "Please select a valid CSV file first",
+  "plugin.pvr.error_no_sql": "Please enter SQL query"
+}

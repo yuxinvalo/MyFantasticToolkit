@@ -1,0 +1,16 @@
+{
+  "plugin_info": {
+    "name": "period_variance_report",
+    "display_name": "Period Variance Report",
+    "version": "1.0.0",
+    "author": "Tearsyu",
+    "description": "Period Variance Report, Semi-automated solution for monthly related user requests, protecting your eyes starts with you."
+  },
+  "available_config": {
+    "enabled": true,
+    "report_save_path": "reports"
+  },
+  "settings": {
+    "last_original_csv_path": "C:/Users/Administrator/Downloads/filtered_data_20250905_122606.csv"
+  }
+}
