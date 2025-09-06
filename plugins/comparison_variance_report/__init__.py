@@ -360,20 +360,28 @@ class Plugin(PluginBase):
     def _generate_sql(self):
         """生成BigQuery SQL"""
         try:
-            if not self.uk_file_path or not os.path.exists(self.uk_file_path):
-                self._add_log(f"[ERROR] ❌ {self.tr('plugin.comparison_variance_report.error_no_uk_file')}")
+            # 检查至少有一个文件存在
+            uk_exists = self.uk_file_path and os.path.exists(self.uk_file_path)
+            hk_exists = self.hk_file_path and os.path.exists(self.hk_file_path)
+            
+            if not uk_exists and not hk_exists:
+                self._add_log(f"[ERROR] ❌ At least one Excel file (UK or HK) must be selected")
                 return
             
-            if not self.hk_file_path or not os.path.exists(self.hk_file_path):
-                self._add_log(f"[ERROR] ❌ {self.tr('plugin.comparison_variance_report.error_no_hk_file')}")
-                return
+            # 记录使用的文件
+            if uk_exists and hk_exists:
+                self._add_log(f"[SQL GENERATION] 📊 Using both UK and HK files to generate SQL")
+            elif uk_exists:
+                self._add_log(f"[SQL GENERATION] 📊 Using UK file only to generate SQL")
+            else:
+                self._add_log(f"[SQL GENERATION] 📊 Using HK file only to generate SQL")
             
             self._add_log(f"{self.tr('plugin.comparison_variance_report.sql_generation_prefix')} {self.tr('plugin.comparison_variance_report.sql_generation_start')}")
             self.log_info(f"{self.tr('plugin.comparison_variance_report.log_prefix')} {self.tr('plugin.comparison_variance_report.sql_generation_begin')}")
             
             # 读取并验证Excel数据
-            uk_data, hk_data = self._read_and_validate_excel_data()
-            if uk_data is None or hk_data is None:
+            uk_data, hk_data = self._read_and_validate_excel_data(uk_exists, hk_exists)
+            if (uk_exists and uk_data is None) or (hk_exists and hk_data is None):
                 return
             
             # 提取SQL参数
@@ -392,40 +400,65 @@ class Plugin(PluginBase):
             self.log_error(f"{self.tr('plugin.comparison_variance_report.log_prefix')} {self.tr('plugin.comparison_variance_report.sql_generation_failed')}: {e} - {traceback.format_exc()}")
             self._add_log(f"{self.tr('plugin.comparison_variance_report.error_prefix')} {self.tr('plugin.comparison_variance_report.sql_generation_failed')}: {e}")
 
-    def _read_and_validate_excel_data(self):
+    def _read_and_validate_excel_data(self, uk_exists=True, hk_exists=True):
         """读取并验证Excel数据"""
         try:
-            self._add_log(f"{self.tr('plugin.comparison_variance_report.log_prefix')} {self.tr('plugin.comparison_variance_report.excel_reading_uk')}")
-            uk_data = pd.read_excel(self.uk_file_path)
-            self.log_info(f"{self.tr('plugin.comparison_variance_report.log_prefix')} {self.tr('plugin.comparison_variance_report.excel_read_success_uk', rows=len(uk_data))}")
+            uk_data = None
+            hk_data = None
             
-            self._add_log(f"{self.tr('plugin.comparison_variance_report.log_prefix')} {self.tr('plugin.comparison_variance_report.excel_reading_hk')}")
-            # 对于HK文件，读取"HK"工作表
-            hk_data = pd.read_excel(self.hk_file_path, sheet_name='HK')
-            self.log_info(f"{self.tr('plugin.comparison_variance_report.log_prefix')} {self.tr('plugin.comparison_variance_report.excel_read_success_hk', rows=len(hk_data))}")
+            # 读取UK数据（如果存在）
+            if uk_exists:
+                self._add_log(f"{self.tr('plugin.comparison_variance_report.log_prefix')} {self.tr('plugin.comparison_variance_report.excel_reading_uk')}")
+                uk_data = pd.read_excel(self.uk_file_path)
+                self.log_info(f"{self.tr('plugin.comparison_variance_report.log_prefix')} {self.tr('plugin.comparison_variance_report.excel_read_success_uk', rows=len(uk_data))}")
+            
+            # 读取HK数据（如果存在）
+            if hk_exists:
+                self._add_log(f"{self.tr('plugin.comparison_variance_report.log_prefix')} {self.tr('plugin.comparison_variance_report.excel_reading_hk')}")
+                # 对于HK文件，读取"HK"工作表
+                hk_data = pd.read_excel(self.hk_file_path, sheet_name='HK')
+                self.log_info(f"{self.tr('plugin.comparison_variance_report.log_prefix')} {self.tr('plugin.comparison_variance_report.excel_read_success_hk', rows=len(hk_data))}")
             
             # 验证必需的列
             required_columns = ['Reporting Date', 'Frequency', 'Record Type', 'Country', 'Variance']
             
-            for col in required_columns:
-                if col not in uk_data.columns:
-                    self._add_log(f"{self.tr('plugin.comparison_variance_report.error_prefix')} {self.tr('plugin.comparison_variance_report.missing_column_uk', column=col)}")
-                    return None, None
-                if col not in hk_data.columns:
-                    self._add_log(f"{self.tr('plugin.comparison_variance_report.error_prefix')} {self.tr('plugin.comparison_variance_report.missing_column_hk', column=col)}")
-                    return None, None
+            # 验证UK数据列（如果存在）
+            if uk_exists and uk_data is not None:
+                for col in required_columns:
+                    if col not in uk_data.columns:
+                        self._add_log(f"{self.tr('plugin.comparison_variance_report.error_prefix')} {self.tr('plugin.comparison_variance_report.missing_column_uk', column=col)}")
+                        return None, None
+            
+            # 验证HK数据列（如果存在）
+            if hk_exists and hk_data is not None:
+                for col in required_columns:
+                    if col not in hk_data.columns:
+                        self._add_log(f"{self.tr('plugin.comparison_variance_report.error_prefix')} {self.tr('plugin.comparison_variance_report.missing_column_hk', column=col)}")
+                        return None, None
             
             # 按照文档要求过滤数据
-            # 1. 过滤Country不是GB或HK的行
-            uk_data_filtered = uk_data[uk_data['Country'].isin(['GB', 'HK'])]
-            hk_data_filtered = hk_data[hk_data['Country'].isin(['GB', 'HK'])]
+            uk_data_filtered = None
+            hk_data_filtered = None
             
-            # 2. 过滤Variance为"-", "0", None, ""的行
-            variance_exclude = ['-', '0', None, '', 0]
-            uk_data_filtered = uk_data_filtered[~uk_data_filtered['Variance'].isin(variance_exclude)]
-            hk_data_filtered = hk_data_filtered[~hk_data_filtered['Variance'].isin(variance_exclude)]
+            # 过滤UK数据（如果存在）
+            if uk_exists and uk_data is not None:
+                # 1. 过滤Country不是GB或HK的行
+                uk_data_filtered = uk_data[uk_data['Country'].isin(['GB', 'HK'])]
+                # 2. 过滤Variance为"-", "0", None, ""的行
+                variance_exclude = ['-', '0', None, '', 0]
+                uk_data_filtered = uk_data_filtered[~uk_data_filtered['Variance'].isin(variance_exclude)]
             
-            self._add_log(f"{self.tr('plugin.comparison_variance_report.log_prefix')} Data Variance filter done - UK: {len(uk_data_filtered)} lines, HK: {len(hk_data_filtered)} lines")
+            # 过滤HK数据（如果存在）
+            if hk_exists and hk_data is not None:
+                # 1. 过滤Country不是GB或HK的行
+                hk_data_filtered = hk_data[hk_data['Country'].isin(['GB', 'HK'])]
+                # 2. 过滤Variance为"-", "0", None, ""的行
+                variance_exclude = ['-', '0', None, '', 0]
+                hk_data_filtered = hk_data_filtered[~hk_data_filtered['Variance'].isin(variance_exclude)]
+            
+            uk_count = len(uk_data_filtered) if uk_data_filtered is not None else 0
+            hk_count = len(hk_data_filtered) if hk_data_filtered is not None else 0
+            self._add_log(f"{self.tr('plugin.comparison_variance_report.log_prefix')} Data Variance filter done - UK: {uk_count} lines, HK: {hk_count} lines")
             self._add_log(f"{self.tr('plugin.comparison_variance_report.log_prefix')} {self.tr('plugin.comparison_variance_report.column_validation_passed')}")
             return uk_data_filtered, hk_data_filtered
             
@@ -440,18 +473,21 @@ class Plugin(PluginBase):
             self._add_log(f"{self.tr('plugin.comparison_variance_report.log_prefix')} {self.tr('plugin.comparison_variance_report.extracting_sql_params')}")
             
             # 提取并验证Reporting Date
-            uk_dates = uk_data['Reporting Date'].dropna().unique()
-            hk_dates = hk_data['Reporting Date'].dropna().unique()
+            all_dates = []
+            if uk_data is not None:
+                uk_dates = uk_data['Reporting Date'].dropna().unique()
+                all_dates.extend(uk_dates)
+            if hk_data is not None:
+                hk_dates = hk_data['Reporting Date'].dropna().unique()
+                all_dates.extend(hk_dates)
             
-            if len(uk_dates) != 1 or len(hk_dates) != 1:
+            # 检查所有日期是否一致
+            unique_dates = list(set(all_dates))
+            if len(unique_dates) != 1:
                 self._add_log(f"{self.tr('plugin.comparison_variance_report.error_prefix')} {self.tr('plugin.comparison_variance_report.reporting_date_not_unique')}")
                 return None
             
-            if uk_dates[0] != hk_dates[0]:
-                self._add_log(f"{self.tr('plugin.comparison_variance_report.error_prefix')} {self.tr('plugin.comparison_variance_report.reporting_date_not_same')}")
-                return None
-            
-            reporting_date = uk_dates[0]
+            reporting_date = unique_dates[0]
             # 确保日期格式为YYYY-MM-DD
             if hasattr(reporting_date, 'strftime'):
                 # 如果是datetime对象，直接格式化
@@ -478,25 +514,37 @@ class Plugin(PluginBase):
                     return None
             
             # 提取并验证freq
-            uk_freq = uk_data['Frequency'].dropna().unique()
-            hk_freq = hk_data['Frequency'].dropna().unique()
+            all_freqs = []
+            if uk_data is not None:
+                uk_freq = uk_data['Frequency'].dropna().unique()
+                all_freqs.extend(uk_freq)
+            if hk_data is not None:
+                hk_freq = hk_data['Frequency'].dropna().unique()
+                all_freqs.extend(hk_freq)
             
-            if len(uk_freq) != 1 or len(hk_freq) != 1:
+            # 检查所有频率是否一致
+            unique_freqs = list(set(all_freqs))
+            if len(unique_freqs) != 1:
                 self._add_log(f"{self.tr('plugin.comparison_variance_report.error_prefix')} {self.tr('plugin.comparison_variance_report.freq_not_unique')}")
                 return None
             
-            if uk_freq[0] != hk_freq[0] or uk_freq[0].upper() != 'MONTHLY':
+            if unique_freqs[0].upper() != 'MONTHLY':
                 self._add_log(f"{self.tr('plugin.comparison_variance_report.error_prefix')} {self.tr('plugin.comparison_variance_report.freq_not_monthly')}")
                 return None
             
-            freq = uk_freq[0]
+            freq = unique_freqs[0]
             
             # 提取Record Type并合并去重
-            uk_record_types = uk_data['Record Type'].dropna().unique()
-            hk_record_types = hk_data['Record Type'].dropna().unique()
+            all_record_types = []
+            if uk_data is not None:
+                uk_record_types = uk_data['Record Type'].dropna().unique()
+                all_record_types.extend(uk_record_types)
+            if hk_data is not None:
+                hk_record_types = hk_data['Record Type'].dropna().unique()
+                all_record_types.extend(hk_record_types)
             
             # 合并并去重，转为大写
-            combined_record_types = list(set(list(uk_record_types) + list(hk_record_types)))
+            combined_record_types = list(set(all_record_types))
             uniq_record_type_list = [str(rt).upper() for rt in combined_record_types]
             
             # 提取其他可能的字段（如果存在）
@@ -511,10 +559,21 @@ class Plugin(PluginBase):
             }
             
             for sql_field, excel_col in required_fields.items():
-                if excel_col in uk_data.columns and excel_col in hk_data.columns:
+                all_values = []
+                col_exists = False
+                
+                if uk_data is not None and excel_col in uk_data.columns:
                     uk_values = uk_data[excel_col].dropna().unique()
+                    all_values.extend(uk_values)
+                    col_exists = True
+                    
+                if hk_data is not None and excel_col in hk_data.columns:
                     hk_values = hk_data[excel_col].dropna().unique()
-                    combined_values = list(set(list(uk_values) + list(hk_values)))
+                    all_values.extend(hk_values)
+                    col_exists = True
+                
+                if col_exists:
+                    combined_values = list(set(all_values))
                     additional_fields[sql_field] = [str(v) for v in combined_values]
             
             sql_params = {
@@ -543,6 +602,15 @@ class Plugin(PluginBase):
             record_type_list = "', '".join(sql_params['uniq_record_type_list'])
             record_type_clause = f"upper(('{record_type_list}'))"
             
+            # 根据实际上传的文件动态生成国家代码过滤条件
+            country_codes = []
+            if self.uk_file_path and os.path.exists(self.uk_file_path):
+                country_codes.append('GB')
+            if self.hk_file_path and os.path.exists(self.hk_file_path):
+                country_codes.append('HK')
+            
+            country_clause = "', '".join(country_codes)
+            
             # 构建基础SQL
             sql_query = f"""SELECT
   reporting_date,
@@ -565,7 +633,7 @@ FROM
   `hsbc-xxx-radar-prod.TABLE_NAME_REPORT_V01_00`
 WHERE
   reporting_date = '{sql_params['reporting_date']}'  -- For example {sql_params['reporting_date']}
-  AND radar_country_code in ('GB','HK')
+  AND radar_country_code in ('{country_clause}')
   AND file_freq = '{sql_params['freq']}'
   AND upper(record_type) in {record_type_clause}"""
             
@@ -595,19 +663,27 @@ WHERE
                 self._add_log("[ERROR] ❌ GCP CSV file not selected or does not exist")
                 return
             
-            if not self.uk_file_path or not os.path.exists(self.uk_file_path):
-                self._add_log("[ERROR] ❌ UK Excel file not selected or does not exist")
+            # 检查至少有一个Excel文件存在
+            uk_exists = self.uk_file_path and os.path.exists(self.uk_file_path)
+            hk_exists = self.hk_file_path and os.path.exists(self.hk_file_path)
+            
+            if not uk_exists and not hk_exists:
+                self._add_log("[ERROR] ❌ At least one Excel file (UK or HK) must be selected and exist")
                 return
-                
-            if not self.hk_file_path or not os.path.exists(self.hk_file_path):
-                self._add_log("[ERROR] ❌ HK Excel file not selected or does not exist")
-                return
+            
+            # 记录使用的文件
+            if uk_exists and hk_exists:
+                self._add_log("[INFO] 📁 Using both UK and HK Excel files")
+            elif uk_exists:
+                self._add_log("[INFO] 📁 Using UK Excel file only")
+            else:
+                self._add_log("[INFO] 📁 Using HK Excel file only")
             
             self._add_log("[REPORT] 🔄 Starting report generation process...")
             self.log_info(f"{self.tr('plugin.comparison_variance_report.log_prefix')} 📊 Starting report generation")
             
             # Step 1: Read and validate all data
-            if not self._read_all_data():
+            if not self._read_all_data(uk_exists, hk_exists):
                 return
             
             # Step 2: Generate comparison CSV files
@@ -625,14 +701,14 @@ WHERE
             self.log_error(f"{self.tr('plugin.comparison_variance_report.log_prefix')} ❌ Report generation failed: {e} - {traceback.format_exc()}")
             self._add_log(f"[ERROR] ❌ Report generation failed: {e}")
     
-    def _read_all_data(self):
+    def _read_all_data(self, uk_exists=True, hk_exists=True):
         """读取所有数据文件"""
         try:
             self._add_log("[DATA] 📖 Reading Excel files...")
             
             # 读取Excel数据
-            self.uk_data, self.hk_data = self._read_and_validate_excel_data()
-            if self.uk_data is None or self.hk_data is None:
+            self.uk_data, self.hk_data = self._read_and_validate_excel_data(uk_exists, hk_exists)
+            if (uk_exists and self.uk_data is None) or (hk_exists and self.hk_data is None):
                 self._add_log("[ERROR] ❌ Failed to read Excel files")
                 return False
             
@@ -643,7 +719,9 @@ WHERE
                 self._add_log("[ERROR] ❌ Failed to read GCP CSV file")
                 return False
             
-            self._add_log(f"[DATA] ✅ All data loaded successfully - UK: {len(self.uk_data)} rows, HK: {len(self.hk_data)} rows, GCP: {len(self.gcp_csv_data)} rows")
+            uk_count = len(self.uk_data) if self.uk_data is not None else 0
+            hk_count = len(self.hk_data) if self.hk_data is not None else 0
+            self._add_log(f"[DATA] ✅ All data loaded successfully - UK: {uk_count} rows, HK: {hk_count} rows, GCP: {len(self.gcp_csv_data)} rows")
             return True
             
         except Exception as e:
@@ -713,13 +791,17 @@ WHERE
                 self._add_log("[ERROR] ❌ Could not determine reporting date")
                 return False
             
-            # 处理UK数据
-            self._add_log("[COMPARISON] 🔍 Processing UK data...")
-            uk_success = self._process_country_data('GB', 'UK', reporting_date, timestamp, reports_dir)
+            # 处理UK数据（如果存在）
+            uk_success = True
+            if self.uk_data is not None:
+                self._add_log("[COMPARISON] 🔍 Processing UK data...")
+                uk_success = self._process_country_data('GB', 'UK', reporting_date, timestamp, reports_dir)
             
-            # 处理HK数据
-            self._add_log("[COMPARISON] 🔍 Processing HK data...")
-            hk_success = self._process_country_data('HK', 'HK', reporting_date, timestamp, reports_dir)
+            # 处理HK数据（如果存在）
+            hk_success = True
+            if self.hk_data is not None:
+                self._add_log("[COMPARISON] 🔍 Processing HK data...")
+                hk_success = self._process_country_data('HK', 'HK', reporting_date, timestamp, reports_dir)
             
             if uk_success and hk_success:
                 self._add_log("[COMPARISON] ✅ All comparison CSV files generated successfully")
@@ -736,8 +818,8 @@ WHERE
     def _get_reporting_date(self):
         """从数据中获取报告日期"""
         try:
-            # 从UK数据中获取报告日期
-            if 'Reporting Date' in self.uk_data.columns:
+            # 从UK数据中获取报告日期（如果存在）
+            if self.uk_data is not None and 'Reporting Date' in self.uk_data.columns:
                 uk_dates = self.uk_data['Reporting Date'].dropna().unique()
                 if len(uk_dates) > 0:
                     date_val = uk_dates[0]
@@ -751,6 +833,23 @@ WHERE
                                 return parsed_date.strftime('%Y-%m-%d')
                             except ValueError:
                                 continue
+            
+            # 如果UK数据中没有找到日期，尝试从HK数据中获取
+            if self.hk_data is not None and 'Reporting Date' in self.hk_data.columns:
+                hk_dates = self.hk_data['Reporting Date'].dropna().unique()
+                if len(hk_dates) > 0:
+                    date_val = hk_dates[0]
+                    if hasattr(date_val, 'strftime'):
+                        return date_val.strftime('%Y-%m-%d')
+                    else:
+                        # 尝试解析字符串日期
+                        for fmt in ['%Y-%m-%d', '%Y/%m/%d', '%d/%m/%Y', '%m/%d/%Y']:
+                            try:
+                                parsed_date = datetime.strptime(str(date_val), fmt)
+                                return parsed_date.strftime('%Y-%m-%d')
+                            except ValueError:
+                                continue
+            
             return None
         except Exception as e:
             self.log_error(f"Failed to get reporting date: {e}")
@@ -761,8 +860,14 @@ WHERE
         try:
             # 选择对应国家的Excel数据
             if country_code == 'GB':
+                if self.uk_data is None:
+                    self._add_log(f"[WARNING] ⚠️ No UK data available")
+                    return True  # 不算错误，只是没有数据
                 excel_data = self.uk_data[self.uk_data['Country'] == 'GB'].copy()
             else:
+                if self.hk_data is None:
+                    self._add_log(f"[WARNING] ⚠️ No HK data available")
+                    return True  # 不算错误，只是没有数据
                 excel_data = self.hk_data[self.hk_data['Country'] == 'HK'].copy()
             
             if excel_data.empty:
@@ -942,13 +1047,14 @@ WHERE
                 self._add_log("[INFO] ℹ️ User cancelled report save")
                 return True  # 用户取消不算错误
             
-            # 读取生成的CSV文件
-            csv_files = {
-                'UK_0': f"CVR_UK_0_{reporting_date}_{timestamp}.csv",
-                'UK_1': f"CVR_UK_1_{reporting_date}_{timestamp}.csv",
-                'HK_0': f"CVR_HK_0_{reporting_date}_{timestamp}.csv",
-                'HK_1': f"CVR_HK_1_{reporting_date}_{timestamp}.csv"
-            }
+            # 读取生成的CSV文件（只包含存在的国家数据）
+            csv_files = {}
+            if self.uk_data is not None:
+                csv_files['UK_0'] = f"CVR_UK_0_{reporting_date}_{timestamp}.csv"
+                csv_files['UK_1'] = f"CVR_UK_1_{reporting_date}_{timestamp}.csv"
+            if self.hk_data is not None:
+                csv_files['HK_0'] = f"CVR_HK_0_{reporting_date}_{timestamp}.csv"
+                csv_files['HK_1'] = f"CVR_HK_1_{reporting_date}_{timestamp}.csv"
             
             # 生成HTML报告
             success = self._generate_html_report(file_path, csv_files, reports_dir, reporting_date)
@@ -979,13 +1085,18 @@ WHERE
 
 """
             
-            # 为每个国家和状态组合生成表格
-            sections = [
-                ('UK', 0, 'UK_0'),
-                ('UK', 1, 'UK_1'), 
-                ('HK', 0, 'HK_0'),
-                ('HK', 1, 'HK_1')
-            ]
+            # 为每个国家和状态组合生成表格（只包含存在的国家数据）
+            sections = []
+            if self.uk_data is not None:
+                sections.extend([
+                    ('UK', 0, 'UK_0'),
+                    ('UK', 1, 'UK_1')
+                ])
+            if self.hk_data is not None:
+                sections.extend([
+                    ('HK', 0, 'HK_0'),
+                    ('HK', 1, 'HK_1')
+                ])
             
             for country, status, file_key in sections:
                 markdown_content += f"\n## {country}, Status = {status}\n\n"
