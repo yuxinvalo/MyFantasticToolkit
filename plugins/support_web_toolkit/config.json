@@ -57,7 +57,7 @@
       "Asia/Kolkata"
     ]
   },
-  "web_language": "zh_CN",
+  "web_language": "en_US",
   "todo_list": {
     "archived_todo_path": "archived_todos.json",
     "todo": [
