@@ -326,6 +326,15 @@ class Plugin(PluginBase):
         )
         tools_layout.addWidget(self.libre_cmd_button, 2, 1)
         
+        # File Diff工具
+        self.file_diff_button = self._create_tool_button(
+            self.tr("plugin.web_toolkit.file_diff"),
+            self.tr("plugin.web_toolkit.file_diff_desc"),
+            "#e83e8c",
+            lambda: self._open_tool("/File_Diff")
+        )
+        tools_layout.addWidget(self.file_diff_button, 3, 0)
+        
         layout.addWidget(self.tools_group)
         
         # 服务状态区域
@@ -485,7 +494,8 @@ class Plugin(PluginBase):
         color_map = {
             "#28a745": "#218838",
             "#007bff": "#0056b3",
-            "#6f42c1": "#5a32a3"
+            "#6f42c1": "#5a32a3",
+            "#e83e8c": "#d91a72"
         }
         return color_map.get(color, color)
     
@@ -720,6 +730,14 @@ class Plugin(PluginBase):
             self.timezone_button.setText(f"{self.tr('plugin.web_toolkit.timezone_converter')}\n{self.tr('plugin.web_toolkit.timezone_converter_desc')}")
         if hasattr(self, 'markdown_button'):
             self.markdown_button.setText(f"{self.tr('plugin.web_toolkit.markdown_editor')}\n{self.tr('plugin.web_toolkit.markdown_editor_desc')}")
+        if hasattr(self, 'todo_button'):
+            self.todo_button.setText(f"{self.tr('plugin.web_toolkit.todo_list')}\n{self.tr('plugin.web_toolkit.todo_list_desc')}")
+        if hasattr(self, 'data_viewer_button'):
+            self.data_viewer_button.setText(f"{self.tr('plugin.web_toolkit.data_viewer')}\n{self.tr('plugin.web_toolkit.data_viewer_desc')}")
+        if hasattr(self, 'libre_cmd_button'):
+            self.libre_cmd_button.setText(f"{self.tr('plugin.web_toolkit.libre_cmd')}\n{self.tr('plugin.web_toolkit.libre_cmd_desc')}")
+        if hasattr(self, 'file_diff_button'):
+            self.file_diff_button.setText(f"{self.tr('plugin.web_toolkit.file_diff')}\n{self.tr('plugin.web_toolkit.file_diff_desc')}")
         
         # 更新状态
         self._update_status_ui()
